@@ -152,7 +152,7 @@ class ModelBridge(Node):
         """
         self.ack_data = {
             'speed': msg.drive.speed,
-            'steering_angle': np.rad2deg(msg.drive.steering_angle)
+            'steering_angle': msg.drive.steering_angle
         }
 
     def odo_callback(self, msg):
@@ -227,7 +227,7 @@ class ModelBridge(Node):
             f"{k:>10} : {v: .4f} {unit:>5}"
             for (k, unit), v in zip(obs_keys_units, obs_values)
         ])
-        self.get_logger().info(f"Sent observations:\n{tab_list}")
+        # self.get_logger().info(f"Sent observations:\n{tab_list}")
 
     def receive_predictions(self):
         """

@@ -3,6 +3,8 @@ import os
 import sys
 import yaml
 import zmq
+import time
+import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rl.ppo import PPO
@@ -36,6 +38,9 @@ class ModelServer:
         print("Loading model...")
         self.load_model(self.model_name)
         print("Model loaded successfully.")
+
+        self.times = []
+        self.count = 0
 
         # Set up ZMQ sockets
         context = zmq.Context()
@@ -101,6 +106,7 @@ class ModelServer:
         Handle incoming observations and return predictions.
         """
         try:
+            t0 = time.time()
             state = self.env.observation
 
             # Predict action
@@ -110,6 +116,13 @@ class ModelServer:
 
             # Prepare the response
             response = {"prediction": prediction}
+
+            self.count += 1
+            if self.count >= 1000 and len(self.times) < 1000:
+                elapsed = time.time() - t0
+                self.times.append(elapsed)
+                print(f"#{len(self.times)}: Inference time={elapsed}s\tavg={np.mean(self.times)}\tstd={np.std(self.times)}\tmax={np.max(self.times)}")
+
             return response
         except Exception as e:
             print(f"Error: {e}")
