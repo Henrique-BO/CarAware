@@ -61,7 +61,7 @@ def generate_launch_description():
         parameters=[
             os.path.join(
                 get_package_share_directory('caraware_ros'),
-                'params',
+                'config',
                 'vesc_config.yml'
             )
         ]
@@ -93,6 +93,7 @@ def generate_launch_description():
                 'config',
                 'ekf.yaml'
             ),
+            {'use_sim_time': False},
         ],
         remappings=[
             ('/imu/data', '/imu/data_raw'),

@@ -41,6 +41,9 @@ class StanleyController(Node):
                 self.orientation_to_yaw(pose.pose.orientation)
             ) for pose in msg.poses]
 
+        # self.get_logger().info(f"Received path with {len(self.path)} points")
+        # self.get_logger().info(f"{self.path}")
+
     def control_loop(self):
         if not self.path:
             self.cmd_pub.publish(AckermannDriveStamped())  # Publish empty command if no path
@@ -49,7 +52,7 @@ class StanleyController(Node):
         # Get current vehicle position and orientation
         try:
             transform = self.tf_buffer.lookup_transform(
-                'map', self.vehicle_frame_id, rclpy.time.Time())
+                'odom', self.vehicle_frame_id, rclpy.time.Time())
             px = transform.transform.translation.x
             py = transform.transform.translation.y
             yaw = self.orientation_to_yaw(transform.transform.rotation)
@@ -77,7 +80,13 @@ class StanleyController(Node):
         perp_error = dx * math.sin(yaw_closest) - dy * math.cos(yaw_closest)
 
         # Stanley control
-        steer = heading_error + math.atan2(self.k * perp_error, self.velocity)
+        steer = heading_error #+ math.atan2(self.k * perp_error, self.velocity)
+        self.get_logger().info(
+            f"Heading error: {math.degrees(heading_error):.2f}°, "
+            f"Perpendicular error: {perp_error:.2f} m, "
+            f"CTE angle: {math.degrees(math.atan2(self.k * perp_error, self.velocity)):.2f}°, "
+            f"Steering angle: {math.degrees(steer):.2f}°, "
+        )
 
         # Publish Ackermann command
         ackermann_msg = AckermannDriveStamped()

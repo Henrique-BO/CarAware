@@ -47,15 +47,15 @@ class SquarePlanner(Node):
 
     def feedback_callback(self, msg):
         adjusted_index = self.last_published_start_index + msg.data
-        if adjusted_index < len(self.full_path.poses) and adjusted_index >= 0:
-            self.closest_index = adjusted_index
-            self.get_logger().debug(f"Adjusted closest index: {self.closest_index}")
+        if adjusted_index >= 0:
+            self.closest_index = min(adjusted_index, len(self.full_path.poses) - 1)
+            self.get_logger().info(f"Adjusted closest index: {self.closest_index}")
         else:
             self.get_logger().warn(f"Feedback index out of bounds: {adjusted_index}")
 
     def get_vehicle_pose(self):
         try:
-            transform: TransformStamped = self.tf_buffer.lookup_transform('map', self.vehicle_frame_id, rclpy.time.Time())
+            transform: TransformStamped = self.tf_buffer.lookup_transform('odom', self.vehicle_frame_id, rclpy.time.Time())
             pose = PoseStamped()
             pose.header = transform.header
             pose.pose.position.x = transform.transform.translation.x
@@ -108,16 +108,16 @@ class SquarePlanner(Node):
 
         segments = []
         segments += self.interpolate_segment((r, 0), (L - r, 0))
-        segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
-        segments += self.interpolate_segment((L, r), (L, L - r))
-        segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
-        segments += self.interpolate_segment((L - r, L), (r, L))
-        segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
-        segments += self.interpolate_segment((0, L - r), (0, r))
-        segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
+        # segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
+        # segments += self.interpolate_segment((L, r), (L, L - r))
+        # segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
+        # segments += self.interpolate_segment((L - r, L), (r, L))
+        # segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
+        # segments += self.interpolate_segment((0, L - r), (0, r))
+        # segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
 
         path_msg = Path()
-        path_msg.header.frame_id = 'map'
+        path_msg.header.frame_id = 'odom'
         path_msg.header.stamp = self.get_clock().now().to_msg()
 
         prev_x = prev_y = None
@@ -160,7 +160,7 @@ class SquarePlanner(Node):
             return
 
         path_msg = Path()
-        path_msg.header.frame_id = 'map'
+        path_msg.header.frame_id = 'odom'
         path_msg.header.stamp = self.get_clock().now().to_msg()
 
         start_index = self.closest_index

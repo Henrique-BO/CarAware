@@ -200,32 +200,33 @@ class ModelBridge(Node):
                 self.tf_broadcaster.sendTransform(transform_msg)
 
                 # Plot the prediction error in real time
-                try:
-                    gt_transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
-                    gt = np.array([
-                        gt_transform.transform.translation.x,
-                        gt_transform.transform.translation.y
-                    ])
+                if self.plot_error:
+                    try:
+                        gt_transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
+                        gt = np.array([
+                            gt_transform.transform.translation.x,
+                            gt_transform.transform.translation.y
+                        ])
 
-                    error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
+                        error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
 
-                    kf_transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-                    kf = np.array([
-                        kf_transform.transform.translation.x,
-                        kf_transform.transform.translation.y
-                    ])
-                    kf_error = np.linalg.norm(kf - gt)
+                        kf_transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+                        kf = np.array([
+                            kf_transform.transform.translation.x,
+                            kf_transform.transform.translation.y
+                        ])
+                        kf_error = np.linalg.norm(kf - gt)
 
-                    self.errors.append(error)
-                    self.kf_errors.append(kf_error)
-                    self.timestamps.append(self.get_clock().now().nanoseconds * 1e-9)  # Convert to seconds
+                        self.errors.append(error)
+                        self.kf_errors.append(kf_error)
+                        self.timestamps.append(self.get_clock().now().nanoseconds * 1e-9)  # Convert to seconds
 
-                    if len(self.errors) > 1000:
-                        self.errors.pop(0)
-                        self.kf_errors.pop(0)
-                        self.timestamps.pop(0)
-                except Exception as e:
-                    self.get_logger().warn(f"Could not get map->base_link transform: {e}")
+                        if len(self.errors) > 1000:
+                            self.errors.pop(0)
+                            self.kf_errors.pop(0)
+                            self.timestamps.pop(0)
+                    except Exception as e:
+                        self.get_logger().warn(f"Could not get map->base_link transform: {e}")
             except Exception as e:
                 self.get_logger().error(f"Error during ZMQ communication: {e}")
 
