@@ -54,12 +54,13 @@ class GoalController(Node):
     def spin(self):
         try:
             transform = self.buffer.lookup_transform(
-                self.goal.header.frame_id,
                 self.frame_id,
+                self.goal.header.frame_id,
                 rclpy.time.Time())
             delta = do_transform_pose(self.goal.pose, transform)
         except Exception as e:
             self.get_logger().warn(f"Transform failed: {e}")
+            self.ackermann_pub.publish(AckermannDriveStamped())
             return
 
         delta_x = delta.position.x
@@ -75,6 +76,7 @@ class GoalController(Node):
             if not self.reached:
                 self.get_logger().info("Goal reached")
                 self.reached = True
+            self.ackermann_pub.publish(AckermannDriveStamped())
             return
 
 

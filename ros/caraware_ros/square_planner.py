@@ -4,7 +4,10 @@ from rclpy.node import Node
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Int32
+from std_srvs.srv import Trigger
 import math
+from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
+from geometry_msgs.msg import TransformStamped
 
 class RoundedSquarePlanner(Node):
     def __init__(self):
@@ -26,16 +29,15 @@ class RoundedSquarePlanner(Node):
         self.last_published_start_index = 0
         self.last_path_stamp = None
 
-        self.pose_sub = self.create_subscription(PoseStamped, '/vehicle_pose', self.pose_callback, 10)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
         self.feedback_sub = self.create_subscription(Int32, '/closest_index_feedback', self.feedback_callback, 10)
         self.path_pub = self.create_publisher(Path, '/planned_path', 10)
 
         self.timer = self.create_timer(0.2, self.publish_horizon)
 
-        self.create_service(PoseStamped, 'generate_plan', self.handle_plan_request)
-
-    def pose_callback(self, msg):
-        self.vehicle_pose = msg
+        self.create_service(Trigger, 'generate_plan', self.handle_plan_request)
 
     def feedback_callback(self, msg):
         adjusted_index = self.last_published_start_index + msg.data
@@ -45,15 +47,34 @@ class RoundedSquarePlanner(Node):
         else:
             self.get_logger().warn(f"Feedback index out of bounds: {adjusted_index}")
 
-    def handle_plan_request(self, request, response=None):
-        if self.vehicle_pose is None:
-            self.get_logger().warn("No vehicle pose received yet.")
+    def get_vehicle_pose(self):
+        try:
+            transform: TransformStamped = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+            pose = PoseStamped()
+            pose.header = transform.header
+            pose.pose.position.x = transform.transform.translation.x
+            pose.pose.position.y = transform.transform.translation.y
+            pose.pose.position.z = transform.transform.translation.z
+            pose.pose.orientation = transform.transform.rotation
+            return pose
+        except (LookupException, ConnectivityException, ExtrapolationException) as e:
+            self.get_logger().warn(f"Failed to get transform: {e}")
             return None
+
+    def handle_plan_request(self, request, response):
+        self.vehicle_pose = self.get_vehicle_pose()
+        if self.vehicle_pose is None:
+            self.get_logger().warn("Failed to get vehicle pose.")
+            response.success = False
+            response.message = "Failed to get vehicle pose."
+            return response
 
         self.full_path = self.generate_rounded_square_path(self.vehicle_pose)
         self.closest_index = 0
         self.get_logger().info("Generated rounded square plan.")
-        return self.vehicle_pose  # dummy return
+        response.success = True
+        response.message = "Plan generated successfully."
+        return response
 
     def interpolate_segment(self, start, end):
         x0, y0 = start
