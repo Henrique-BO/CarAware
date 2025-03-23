@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import carla
-#import logging
+import logging
 #import random
 import cv2
 import numpy as np
@@ -22,7 +22,7 @@ from threading import Thread
 #from threading import Timer
 import subprocess
 
-os.environ["CUDA_VISIBLE_DEVICES"]="-1" #disable Tensorflow GPU usage, these simple graphs run faster on CPU
+# os.environ["CUDA_VISIBLE_DEVICES"]="-1" #disable Tensorflow GPU usage, these simple graphs run faster on CPU
 
 #from agents.navigation.behavior_agent import BehaviorAgent
 #from agents.navigation.basic_agent import BasicAgent
@@ -32,14 +32,12 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # CARREGA ARQUIVO .EGG COM MÓDULO PYTHON API DO CARLA
-try:
-    sys.path.append(glob.glob('C:\carla\PythonAPI\carla\dist\carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
-
+# try:
+#     sys.path.append('/home/carla/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg')
+#     import carla
+# except IndexError:
+#     print("Erro ao carregar módulo Python API do CARLA")
+#     exit
 
 # ========== VARIÁVEIS GLOBAIS ==========
 SIM_PARAMS = {}
@@ -49,12 +47,12 @@ SIM_PARAMS["EPISODE_RESET"] = True  # Se True, faz o respawn aleatório a cada n
 SIM_PARAMS["RESET_INTERVAL"] = 3  # Define qual número e episódios serão rodados até realizar o reset
 SIM_PARAMS["CENTRALIZED_SPAWN"] = False  # Se True, força o spawn a acontecer no centro do mapa (Funciona apenas com Town02)
 SIM_PARAMS["SENSORS_BLACKOUT"] = False  # Se True, falha os sensores a cada X segundos, por Y segundos.
-SIM_PARAMS["MAP"] = "Town02"  # Mapa que será carregado na simulação. Ex.: Town01,Town02,Town10HD_Opt (só com ep. reset), Random,Gradual_Random
+SIM_PARAMS["MAP"] = "Town01"  # Mapa que será carregado na simulação. Ex.: Town01,Town02,Town10HD_Opt (só com ep. reset), Random,Gradual_Random
 SIM_PARAMS["RANDOM_MAPS"] = ["Town02", "Town01"]  # Mapas que serão selecionados randomicamente se MAP = "Random" ou "Gradual_Random"
 SIM_PARAMS["GRADUAL_RANDOM_INIT_EP_CHANGE"] = 50  # Número de episódios que irá rodar no início, antes de trocar o mapa
 SIM_PARAMS["GRADUAL_RANDOM_RATE"] = 0  # Tamanho do passo de redução do número de episódios que irá rodar antes de trocar o mapa
 SIM_PARAMS["KALMAN_FILTER"] = True  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
-SIM_PARAMS["NUM_EPISODES"] = int(0)  # total de episódios que serão rodados (0 or less trains forever)
+SIM_PARAMS["NUM_EPISODES"] = int(1)  # total de episódios que serão rodados (0 or less trains forever)
 SIM_PARAMS["EGO_VEHICLE_NUM"] = 1 # Número de Ego vehicles gerados na simulação
 SIM_PARAMS["NPC_VEHICLE_NUM"] = 0  # Número de NPC vehicles gerados na simulação
 SIM_PARAMS["STATIC_PROPS_NUM"] = 0  # Número de objetos estáticos que serão inseridos no meio da rua
@@ -93,7 +91,7 @@ SIM_PARAMS["SCREEN_HEIGHT"] = 1020  # 1080
 SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
 
 # ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
-SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
+SIM_PARAMS["TRAIN_MODE"] = "Simulation"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
 SIM_PARAMS["TRAIN_MODEL"] = "Latest"  # "Latest" ou "Nome do modelo" a ser utilizado.
 SIM_PARAMS["TRAIN_RESTART"] = False  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
 SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
@@ -135,7 +133,7 @@ HYPER_PARAMS["record_eval"] = True  # If True, save' videos of evaluation episod
 # =========== CONFIGURAÇÃO DOS SENSORES ( HABILITAÇÃO É True ou False) ============================
 SENS_PARAMS = {}
 # SPEED AND STEERING ANGLE SENSOR (SPD_SAS) - Funciona apenas com carro em movimento
-SENS_PARAMS["SENS_SPD_SAS"] = True
+SENS_PARAMS["SENS_SPD_SAS"] = False
 SENS_PARAMS["SENS_SPD_SAS_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição
 SENS_PARAMS["SENS_SPD_SAS_ERROR"] = 0.01  # Default: 0.001
 SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_ON"] = False  # Habilita/desabilita blackout desse sensor
@@ -145,7 +143,7 @@ SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do in
 SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MAX"] = 10
 
 # GLOBAL NAVIGATION SATELLITE SYSTEM (GNSS)
-SENS_PARAMS["SENS_GNSS"] = True
+SENS_PARAMS["SENS_GNSS"] = False
 SENS_PARAMS["SENS_GNSS_PREVIEW"] = True  # Define se os pontos detectados serão desenhados na tela
 SENS_PARAMS["SENS_GNSS_SAMPLING"] = 0.1 # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 1
 SENS_PARAMS["SENS_GNSS_ERROR"] = 0.00005  # Default: Low = 0.00001 / High = 0.0001
@@ -157,7 +155,7 @@ SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do inter
 SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MAX"] = 10
 
 # INERTIAL MEASUREMENT UNIT (IMU)
-SENS_PARAMS["SENS_IMU"] = True
+SENS_PARAMS["SENS_IMU"] = False
 SENS_PARAMS["SENS_IMU_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
 SENS_PARAMS["SENS_IMU_ACCEL_ERROR"] = 0.001  # Default: 0.00001
 SENS_PARAMS["SENS_IMU_GYRO_ERROR"] = 0.001  # Default: 0.00001
@@ -169,7 +167,7 @@ SENS_PARAMS["SENS_IMU_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do interv
 SENS_PARAMS["SENS_IMU_BLACKOUT_INTERVAL_MAX"] = 10
 
 # COLLISION DETECTION (COL)  # Resets the episode if there is a collision and the vehicle stops
-SENS_PARAMS["SENS_COL"] = True
+SENS_PARAMS["SENS_COL"] = False
 
 # OBSTACLE DETECTION (OBS)
 SENS_PARAMS["SENS_OBS"] = False
@@ -229,8 +227,12 @@ SENS_PARAMS["LABEL_COLORS"] = np.array([
 SENS_PARAMS["YOLO_COLORS"] = [(0, 255, 255), (255, 255, 0), (0, 255, 0), (255, 0, 0)]
 
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # ===== PROGRAMA PRINCIPAL =====
 def main():
+    logging.info("Starting main function...")
 
     # UNPACK DAS VIARIÁVEIS UTILIZADAS NESSE PROGRAMA
     MAP = SIM_PARAMS["MAP"]
@@ -259,9 +261,12 @@ def main():
 
     RESET_INTERVAL = SIM_PARAMS["RESET_INTERVAL"]
 
+    logging.info("Simulation parameters and sensor configurations unpacked.")
+
     # INICIALIZA AS CLASSES DA SIMULAÇÃO
     sim = simulation.SimulationSetup(SIM_PARAMS, SENS_PARAMS)  # Classe com setup da simulação
     sim.simulation_status = "Loading"  # Informa que a simulação está sendo carregada
+    logging.info("Simulation setup initialized.")
 
     sim_pause = simulation.SimPause()  # Classe que pausa/resume a simulação
     sim_pause.start(sim)
@@ -275,13 +280,16 @@ def main():
     #top_view.start()
 
     if TRAIN_MODE == "Train":  # inicializa thread p/ treinamento RL
+        logging.info("Starting training mode...")
         trainer_thread = Thread(target=train_RL.train, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
-    if TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
+    elif TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
+        logging.info("Starting play mode...")
         trainer_thread = Thread(target=play_RL.play, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
         sim.simulation_status = "Play_Loading"
-    if TRAIN_MODE == "Simulation":
+    elif TRAIN_MODE == "Simulation":
+        logging.info("Starting simulation mode...")
         sim.simulation_status = "Simulation"
 
     time.sleep(5)
@@ -301,6 +309,7 @@ def main():
 
     First_episode = True  # Faz o spawn no primeiro episódio simulado
     while not sim.simulation_status == "Complete":
+        logging.info(f"Starting episode {sim.episodio_atual}...")
     #for episode_num in range(EPISODE_TOTAL):
 
         sim.new_episode = True
@@ -323,6 +332,7 @@ def main():
 
         # CARREGA PEDESTRES, VEÍCULOS E OBJETOS
         if (EPISODE_RESET and sim.episodio_atual % RESET_INTERVAL == 0 and sim.episodio_atual != 0) or First_episode == True or sim.simulation_reset == True:
+            logging.info("Spawning all entities for the episode...")
             sim.spawn_all()
             sim.simulation_reset = False
             First_episode = False
@@ -340,10 +350,12 @@ def main():
             # registra os eventos em formato de log
             print("\nEpisódio Iniciado - Rodando por", str(HYPER_PARAMS["horizon"]), "horizontes")
 
+        logging.info("Resuming simulation...")
         sim_pause.resume(sim, SIM_PARAMS)  # RESUME A SIMULAÇÃO APÓS A CONFIGURAÇÃO
 
         # Game loop
         ep_start_time = time.time()
+        logging.info("Entering game loop...")
 
         # Espera treinamento começar
         while not (sim.simulation_status == "Training" or sim.simulation_status == "Play" or \
@@ -356,6 +368,7 @@ def main():
 
             # Lógica para finalizar com ESC no modo simulação
             if sim.simulation_status == "Simulation" and top_view.input_control.quit :
+                logging.info("Simulation quit detected. Exiting...")
                 sim.simulation_status = "Complete"
                 break
 
@@ -463,6 +476,8 @@ def main():
                     hud_txt.append(car_info)
             top_view.tick(hud_txt, sim.ego_vehicle)  # atualiza a exibição do top-view
 
+        logging.info(f"Episode {sim.episodio_atual} completed.")
+
         sim_pause.pause(sim)  # PAUSA A SIMULAÇÃO PARA CONFIGURAR O EPISÓDIO
 
         if MAP == "Gradual_Random":
@@ -481,6 +496,7 @@ def main():
 
 
         if sim.simulation_status != "Complete":
+            logging.info("Preparing for the next episode...")
             sim.simulation_status = "Loading"  # Segura o treinamento enquanto a simulação reinicia
 
 
@@ -490,31 +506,34 @@ def main():
 
     # APAGA OS OBJETOS DE SIMULAÇÃO CRIADOS
     del sim
-    # registra os eventos em formato de log
-    print("\nSimulação finalizada!")
+    logging.info("Simulation finalized.")
     return top_view.input_control.quit_reason
 
 if __name__ == '__main__':
+    logging.info("Program started.")
+    result = main()
+    logging.info(f"Program finished with result: {result}")
+    print(result)
 
-    while True:
+    # while True:
 
-        try:
-            subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
-            pass
-        except:
-            pass
+    #     try:
+    #         subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
+    #         pass
+    #     except:
+    #         pass
 
-        os.startfile("C:\carla\CarlaUE4.exe") # ABRE O CARLA
-        time.sleep(5)
-        #subprocess.call(["C:\carla13\CarlaUE4.exe","-fps=5"])
-        result = main()
+    #     os.startfile("C:\carla\CarlaUE4.exe") # ABRE O CARLA
+    #     time.sleep(5)
+    #     #subprocess.call(["C:\carla13\CarlaUE4.exe","-fps=5"])
+    #     result = main()
 
-        if result == "Crash":
-            print("Crash detectado no CarlaUE4, reiniciando simulação para continuar treinamento")
-        else:  # Crash
-            print("Simulação encerrada através da tecla ESC")
-            break
+    #     if result == "Crash":
+    #         print("Crash detectado no CarlaUE4, reiniciando simulação para continuar treinamento")
+    #     else:  # Crash
+    #         print("Simulação encerrada através da tecla ESC")
+    #         break
 
-    subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
+    # subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
 
-    sys.exit()
+    # sys.exit()

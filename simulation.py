@@ -15,10 +15,14 @@ from agents.navigation.basic_agent import BasicAgent
 import pygame
 import top_view
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class SimulationSetup:
 
     # ===== INICIALIZA OS OBJETOS DA SIMULAÇÃO =====
     def __init__(self, sim_params, sens_params):
+        logging.info("Initializing simulation setup...")
         # UNPACK DE VARIÁVEIS
         self.ego_vehicle_num = sim_params["EGO_VEHICLE_NUM"]
         self.npc_vehicle_num = sim_params["NPC_VEHICLE_NUM"]
@@ -99,8 +103,9 @@ class SimulationSetup:
         self.label_colors = sens_params["LABEL_COLORS"]
 
         # INICIANDO AMBIENTE DE SIMULAÇÃO
-        self.client = carla.Client("localhost", 2000)
-        self.client.set_timeout(30.0)
+        self.client = carla.Client("127.0.0.1", 2000)
+        # self.client = carla.Client("localhost", 2000)
+        self.client.set_timeout(180.0)
         self.world = self.client.get_world()
 
         # DEFINE COMANDOS BASE PARA FAZER O SPAWN DOS ATORES DA SIMULAÇÃO
@@ -147,6 +152,7 @@ class SimulationSetup:
         self.chosen_random_map = ""
 
         self.load_world()  # Carrega o mapa e clima
+        logging.info("Simulation setup initialized.")
 
         # ========= CONFIGURA REDE YOLO PARA DETECÇÃO DE OBJETOS POR IMAGENS ===========
         # SETANDO OS PARÂMETROS DA REDE NEURAL YOLO
@@ -195,6 +201,7 @@ class SimulationSetup:
 
     # ======= CARREGA O MUNDO E CONFIGURA A SIMULAÇÃO =======
     def load_world(self):
+        logging.info("Loading world...")
         if self.map == "Random":  # and self.simulation_reset == False:
             random_map = random.choice(self.random_maps)  # garante que o novo mapa é diferente
             while random_map == self.chosen_random_map:
@@ -269,6 +276,7 @@ class SimulationSetup:
                 print("Foram pedidos %d veículos, mas foram encontrados apenas %d spawn points" % (
                     self.ego_vehicle_num + self.npc_vehicle_num + self.static_props_num, spawn_points_number))
                 raise SystemExit(0)
+        logging.info(f"World loaded with map: {self.map}")
 
         # ======= FUNÇÃO AUXILIAR PARA UTILIZAÇÃO DE CLIMAS PRÉ-DEFINIDOS =======
     def find_weather_presets(self):
@@ -282,7 +290,7 @@ class SimulationSetup:
 
     # ===== DESTRÓI VEÍCULOS E PEDESTRES PARA REINICIAR SIMULAÇÃO =====
     def reset(self):
-
+        logging.info("Resetting simulation...")
         # ELIMINA OS PEDESTRES DA SIMULAÇÃO
         # mostra dados em formato de log
         print('\nDestruído(s) %d pedestre(s)' % len(self.walkers_list))
@@ -350,6 +358,7 @@ class SimulationSetup:
         #    self.weather_presets = self.find_weather_presets()
             #preset = self.weather_presets[WEATHER_PRESET]
         #    self.world.set_weather(self.weather_presets[WEATHER_PRESET][0])
+        logging.info("Simulation reset completed.")
 
     # ===== DEFINIÇÃO DAS FUNÇÕES DE CALLBACK COM A LEITURA DOS SENSORES (ARMAZENA APENAS ÚLTIMOS VALORES) =====
     def gnss_callback(self, gnss, veh_num):
@@ -755,6 +764,7 @@ class SimulationSetup:
 
     # ===== CARREGA OS PEDESTRES NA SIMULAÇÃO =====
     def spawn_pedestrians(self):  # PENSAR EM COMO FAZER ESSA FUNÇÃO DAR SPAWN APENAS DE UM PEDESTRE
+        logging.info("Spawning pedestrians...")
         # 1. take random location and spawn walker object
         # self.batch = []
         walker_speed = []
@@ -829,9 +839,11 @@ class SimulationSetup:
 
         # mostra dados em formato de log
         print('Criado(s) %d pedestres' % (len(self.walkers_list)))
+        logging.info(f"Spawned {len(self.walkers_list)} pedestrians.")
 
     # ===== CARREGA CARRO COM OU SEM SENSORES =====
     def spawn_vehicle(self, veh_num, spawn_ego):
+        logging.info(f"Spawning {'EGO' if spawn_ego else 'NPC'} vehicle {veh_num + 1}...")
         # CARREGA BLUEPRINTS DE CARROS E SPAWN POINTS
         bp_vehicle = self.world.get_blueprint_library().filter("vehicle.*")
         bp_vehicle = [x for x in bp_vehicle if int(x.get_attribute('number_of_wheels')) == 4]
@@ -1058,9 +1070,11 @@ class SimulationSetup:
                 point_list = o3d.geometry.PointCloud()
                 ego_lidar.listen(lambda lidar: self.lidar_callback(lidar, veh_num, point_list))
                 self.all_sensors.append(ego_lidar)
+        logging.info(f"Vehicle {veh_num + 1} spawned successfully.")
 
     # ===== CARREGA OBJETOS ESTÁTICOS NOS LUGARES DE SPAWN DE VEÍCULOS =====
     def spawn_props(self,props_num):
+        logging.info(f"Spawning static prop {props_num + 1}...")
         # CARREGA BLUEPRINTS DE OBJETOS E SPAWN POINTS
         bp_props = self.world.get_blueprint_library().filter("static.prop*")
         bp_props = [x for x in bp_props if x.id.startswith('static.prop.trafficcone') or x.id.startswith('static.prop.construction') or x.id.startswith('static.prop.barrel') or x.id.startswith('static.prop.bin')]
@@ -1083,9 +1097,10 @@ class SimulationSetup:
         # Muda a visão para o local onde aconteceu o spawn - APENAS DEBUG
         spectator = self.world.get_spectator()
         spectator.set_transform(transform)
+        logging.info(f"Static prop {props_num + 1} spawned successfully.")
 
     def spawn_all(self):
-        # ============== SPAWN DE PEDESTRES, VEÍCULOS E OBJETOS ==============
+        logging.info("Spawning all entities (pedestrians, vehicles, props)...")
         self.spawn_pedestrians()  # CARREGA PEDESTRES
 
         for veh_num in range(self.ego_vehicle_num):  # FAZ SPAWN DOS CARROS EGO
@@ -1102,6 +1117,7 @@ class SimulationSetup:
             self.spawn_props(props_num)
         # registra os eventos em formato de log
         print("Criado(s) %s obstáculo(s)" % self.static_props_num)
+        logging.info("All entities spawned successfully.")
 
 # CLASSE USADA PARA IMPLEMENTAR O SENSOR DE "DIREÇÃO"
 class Speed_SAS_Sensor(object):
@@ -1135,9 +1151,11 @@ class Speed_SAS_Sensor(object):
 # CLASSE USADA PARA PAUSAR E RESUMIR A SIMULAÇÃO DURANTE O SETUP
 class SimPause(object):
     def __init__(self):
+        logging.info("Initializing simulation pause...")
         self._SimulationSetup = None
         self.settings = None
         self.traffic_manager = None
+        logging.info("Simulation pause initialized.")
 
     def start(self, sim):
         """Assigns other initialized modules that input module needs."""
@@ -1146,6 +1164,7 @@ class SimPause(object):
         self.traffic_manager = sim.traffic_manager
 
     def pause(self, sim):
+        logging.info("Pausing simulation...")
         # CONFIGURA A SIMULAÇÃO/TRAFFIC_MANAGER EM MODO SÍNCRONO PARA PAUSAR A EXECUÇÃO DOS TESTES
         #self.settings.synchronous_mode = True
         #self.settings.fixed_delta_seconds = 1.0 / 20
@@ -1158,8 +1177,10 @@ class SimPause(object):
         for veh in sim.npc_vehicle:
             veh.agent.set_target_speed(0)
             #veh.apply_control(control)
+        logging.info("Simulation paused.")
 
     def resume(self, sim, sim_params):
+        logging.info("Resuming simulation...")
         # CONFIGURA A SIMULAÇÃO/TRAFFIC_MANAGER EM MODO ASSÍNCRONO PARA RESUMIR A EXECUÇÃO DOS TESTES
         #self.settings.synchronous_mode = False
         #self.settings.fixed_delta_seconds = 1.0 / 20
@@ -1188,6 +1209,7 @@ class SimPause(object):
                 veh.agent.set_target_speed(speed)
         else:
             pass
+        logging.info("Simulation resumed.")
 
 # CONFIGURA A VISÃO SUPERIOR DO MAPA
 class TopView(object):

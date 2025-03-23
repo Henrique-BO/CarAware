@@ -21,7 +21,7 @@ from utils import VideoRecorder, ExtendedKalmanFilter
 #from reward_functions import reward_functions
 #import pygame
 import pyautogui
-import pygetwindow as gw
+# import pygetwindow as gw
 
 #from CarlaEnv.carla_env import CarlaEnv as CarlaEnv
 
@@ -36,6 +36,7 @@ def run_eval(env, model, video_filename=None, eval_time = 20, simulation = None,
     #rendered_frame = np.asarray(pil_img)
 
     # Init video recording
+    video_filename=None # TODO fix
     if video_filename is not None:
         # get window
         window_name = "Visão Superior"

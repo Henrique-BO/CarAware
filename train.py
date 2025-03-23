@@ -61,7 +61,7 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
 
     # Set seeds
     if isinstance(seed, int):
-        tf.random.set_random_seed(seed)
+        tf.random.set_seed(seed)
         np.random.seed(seed)
         random.seed(0)
 
@@ -70,7 +70,7 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
 
     # Load VAE
     #vae = load_vae(vae_model, vae_z_dim, vae_model_type)
-    
+
     # Override params for logging
     #params["vae_z_dim"] = vae.z_dim
     #params["vae_model_type"] = "mlp" if isinstance(vae, MlpVAE) else "cnn"
