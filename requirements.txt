@@ -1,0 +1,16 @@
+carla==0.9.15
+tensorflow[and-cuda]==2.10.0
+tensorflow-probability==0.18.0
+numpy
+opencv-python
+pyautogui
+pygetwindow
+scikit-image
+open3d
+pygame
+scipy
+gym
+ipython
+shapely
+pyautogui
+python-xlib
