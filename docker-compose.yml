@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: caraware:latest
+    image: hbarros1/caraware:1.0.0
     runtime: nvidia
     network_mode: "host"
     environment:

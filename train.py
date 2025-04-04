@@ -13,7 +13,7 @@ from ppo import PPO
 #from reward_functions import reward_functions
 from run_eval import run_eval
 from utils import compute_gae
-from vae.models import ConvVAE, MlpVAE
+# from vae.models import ConvVAE, MlpVAE
 
 
 from CarlaEnv.carla_env import CarlaEnv as CarlaEnv

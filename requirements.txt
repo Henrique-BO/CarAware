@@ -1,6 +1,7 @@
-# carla==0.9.15
-tensorflow[and-cuda]==2.10.0
-tensorflow-probability==0.18.0
+carla==0.9.15
+tensorflow-gpu==1.15.5
+tensorflow-probability==0.8.0
+gym
 numpy
 opencv-python
 pyautogui
@@ -9,8 +10,8 @@ scikit-image
 open3d
 pygame
 scipy
-gym
 ipython
 shapely
 pyautogui
 python-xlib
+protobuf==3.20.3

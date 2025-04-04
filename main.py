@@ -91,12 +91,12 @@ SIM_PARAMS["SCREEN_HEIGHT"] = 1020  # 1080
 SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
 
 # ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
-SIM_PARAMS["TRAIN_MODE"] = "Simulation"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
+SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
 SIM_PARAMS["TRAIN_MODEL"] = "Latest"  # "Latest" ou "Nome do modelo" a ser utilizado.
 SIM_PARAMS["TRAIN_RESTART"] = False  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
 SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
 SIM_PARAMS["PREDICTION_HUD"] = True  # Se True, insere informações de prediction no HUD
-SIM_PARAMS["LAST_POSITIONS_TRAINING"] = False  # Se True, passa as últimas 4 posições para a rede no treinamento
+SIM_PARAMS["LAST_POSITIONS_TRAINING"] = True  # Se True, passa as últimas 4 posições para a rede no treinamento
 SIM_PARAMS["RECORD_PLAY_STATS"] = False  # Se True, grava no Tensorboard as distâncias prediction e kalman
 
 #  Melhores modelos:
@@ -133,7 +133,7 @@ HYPER_PARAMS["record_eval"] = True  # If True, save' videos of evaluation episod
 # =========== CONFIGURAÇÃO DOS SENSORES ( HABILITAÇÃO É True ou False) ============================
 SENS_PARAMS = {}
 # SPEED AND STEERING ANGLE SENSOR (SPD_SAS) - Funciona apenas com carro em movimento
-SENS_PARAMS["SENS_SPD_SAS"] = False
+SENS_PARAMS["SENS_SPD_SAS"] = True
 SENS_PARAMS["SENS_SPD_SAS_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição
 SENS_PARAMS["SENS_SPD_SAS_ERROR"] = 0.01  # Default: 0.001
 SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_ON"] = False  # Habilita/desabilita blackout desse sensor
@@ -143,7 +143,7 @@ SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do in
 SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MAX"] = 10
 
 # GLOBAL NAVIGATION SATELLITE SYSTEM (GNSS)
-SENS_PARAMS["SENS_GNSS"] = False
+SENS_PARAMS["SENS_GNSS"] = True
 SENS_PARAMS["SENS_GNSS_PREVIEW"] = True  # Define se os pontos detectados serão desenhados na tela
 SENS_PARAMS["SENS_GNSS_SAMPLING"] = 0.1 # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 1
 SENS_PARAMS["SENS_GNSS_ERROR"] = 0.00005  # Default: Low = 0.00001 / High = 0.0001

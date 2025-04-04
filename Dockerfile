@@ -32,6 +32,7 @@ RUN wget https://bootstrap.pypa.io/pip/3.7/get-pip.py && \
 # Set Python 3.7 as the default Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
+RUN python3.7 -m pip install setuptools==65.5.0 pip==21 wheel==0.38.0
 
 # Install Python packages
 COPY requirements.txt /tmp/requirements.txt

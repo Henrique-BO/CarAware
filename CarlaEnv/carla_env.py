@@ -30,11 +30,12 @@ class CarlaEnv(gym.Env):
         in order for this option to work.
 
         And also remember to set the -fps and -synchronous arguments to match the
-        command-line arguments of the simulator (not needed with -start_carla.) 
-        
+
+                command-line arguments of the simulator (not needed with -start_carla.)
+
         Note that you may also need to add the following line to
         Unreal/CarlaUE4/Config/DefaultGame.ini to have the map included in the package:
-        
+
         +MapsToCook=(FilePath="/Game/Carla/Maps/Town07")
     """
 
@@ -51,7 +52,7 @@ class CarlaEnv(gym.Env):
 
             Connects to a running CARLA enviromment (tested on version 0.9.5) and
             spwans a lincoln mkz2017 passenger car with automatic transmission.
-            
+
             This vehicle can be controlled using the step() function,
             taking an action that consists of [steering_angle, throttle].
 
@@ -77,7 +78,7 @@ class CarlaEnv(gym.Env):
                 1.0 = max smoothing, 0.0 = no smoothing
             fps (int):
                 FPS of the client. If fps <= 0 then use unbounded FPS.
-                Note: Sensors will have a tick rate of fps when fps > 0, 
+                Note: Sensors will have a tick rate of fps when fps > 0,
                 otherwise they will tick as fast as possible.
             synchronous (bool):
                 If True, run in synchronous mode (read the comment above for more info)
