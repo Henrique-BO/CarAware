@@ -1,5 +1,5 @@
-# Use an NVIDIA CUDA base image with Ubuntu 22.04
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+# Use the official TensorFlow 1.15 GPU image
+FROM tensorflow/tensorflow:1.15.0-gpu-py3
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -7,6 +7,7 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # Install necessary dependencies
+RUN apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/3bf863cc.pub
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     curl \
@@ -17,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsm6 \
     libxext6 \
+    mesa-utis \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python 3.7 (manually, since Ubuntu 22.04 doesn’t include it)

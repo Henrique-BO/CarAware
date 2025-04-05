@@ -1,5 +1,5 @@
 carla==0.9.15
-tensorflow-gpu==1.15.5
+tensorflow-gpu==1.15
 tensorflow-probability==0.8.0
 gym
 numpy

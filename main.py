@@ -52,7 +52,7 @@ SIM_PARAMS["RANDOM_MAPS"] = ["Town02", "Town01"]  # Mapas que serão selecionado
 SIM_PARAMS["GRADUAL_RANDOM_INIT_EP_CHANGE"] = 50  # Número de episódios que irá rodar no início, antes de trocar o mapa
 SIM_PARAMS["GRADUAL_RANDOM_RATE"] = 0  # Tamanho do passo de redução do número de episódios que irá rodar antes de trocar o mapa
 SIM_PARAMS["KALMAN_FILTER"] = True  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
-SIM_PARAMS["NUM_EPISODES"] = int(1)  # total de episódios que serão rodados (0 or less trains forever)
+SIM_PARAMS["NUM_EPISODES"] = int(0)  # total de episódios que serão rodados (0 or less trains forever)
 SIM_PARAMS["EGO_VEHICLE_NUM"] = 1 # Número de Ego vehicles gerados na simulação
 SIM_PARAMS["NPC_VEHICLE_NUM"] = 0  # Número de NPC vehicles gerados na simulação
 SIM_PARAMS["STATIC_PROPS_NUM"] = 0  # Número de objetos estáticos que serão inseridos no meio da rua
@@ -92,11 +92,11 @@ SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
 
 # ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
 SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
-SIM_PARAMS["TRAIN_MODEL"] = "Latest"  # "Latest" ou "Nome do modelo" a ser utilizado.
-SIM_PARAMS["TRAIN_RESTART"] = False  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
+SIM_PARAMS["TRAIN_MODEL"] = "PPO_1"  # "Latest" ou "Nome do modelo" a ser utilizado.
+SIM_PARAMS["TRAIN_RESTART"] = True  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
 SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
 SIM_PARAMS["PREDICTION_HUD"] = True  # Se True, insere informações de prediction no HUD
-SIM_PARAMS["LAST_POSITIONS_TRAINING"] = True  # Se True, passa as últimas 4 posições para a rede no treinamento
+SIM_PARAMS["LAST_POSITIONS_TRAINING"] = False  # Se True, passa as últimas 4 posições para a rede no treinamento
 SIM_PARAMS["RECORD_PLAY_STATS"] = False  # Se True, grava no Tensorboard as distâncias prediction e kalman
 
 #  Melhores modelos:
@@ -114,13 +114,13 @@ HYPER_PARAMS["initial_std"] = float(0.7)  # Initial value of the std used in the
 HYPER_PARAMS["target_std"] = int(0.4)  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
 HYPER_PARAMS["value_scale"] = float(1.0)  # Value loss scale factor
 HYPER_PARAMS["entropy_scale"] = float(0.01)  # Entropy loss scale factor - Default: 0.01
-HYPER_PARAMS["horizon"] = int(32768)  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
+HYPER_PARAMS["horizon"] = int(128)  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
 HYPER_PARAMS["num_training"] = int(1)  # Number of times the model will be trained per episode
-HYPER_PARAMS["num_epochs"] = int(4)  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
-HYPER_PARAMS["batch_size"] = int(2048)  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
+HYPER_PARAMS["num_epochs"] = int(3)  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
+HYPER_PARAMS["batch_size"] = int(32)  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
 HYPER_PARAMS["synchronous"] = False  # Set this to True when running in a synchronous environment
 HYPER_PARAMS["action_smoothing"] = float(0.0)  #Action smoothing factor
-HYPER_PARAMS["model_name"] = "PPO_MODEL_step10_moving_1agent_reset3_Town02_distnorm_noblackout_highstd_h32768_batch2048_lr8e5_epoch4_v3"  # Name of the model to train. Output written to models/model_name
+HYPER_PARAMS["model_name"] = "PPO_1"  # Name of the model to train. Output written to models/model_name
 HYPER_PARAMS["reward_fn"] = "rw_distance_normalized"  # Reward Function to use. See reward_functions.py for more info.
 HYPER_PARAMS["seed"] = 0  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
                         # with this option in our experience)
@@ -155,7 +155,7 @@ SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do inter
 SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MAX"] = 10
 
 # INERTIAL MEASUREMENT UNIT (IMU)
-SENS_PARAMS["SENS_IMU"] = False
+SENS_PARAMS["SENS_IMU"] = True
 SENS_PARAMS["SENS_IMU_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
 SENS_PARAMS["SENS_IMU_ACCEL_ERROR"] = 0.001  # Default: 0.00001
 SENS_PARAMS["SENS_IMU_GYRO_ERROR"] = 0.001  # Default: 0.00001
@@ -283,6 +283,7 @@ def main():
         logging.info("Starting training mode...")
         trainer_thread = Thread(target=train_RL.train, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
+        # sim.simulation_status = "Simulation"
     elif TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
         logging.info("Starting play mode...")
         trainer_thread = Thread(target=play_RL.play, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
