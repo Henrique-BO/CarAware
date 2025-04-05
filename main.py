@@ -44,7 +44,7 @@ SIM_PARAMS = {}
 
 # ========== CONFIG DOS EPISÓDIOS DE SIMULAÇÃO ===========
 SIM_PARAMS["EPISODE_RESET"] = True  # Se True, faz o respawn aleatório a cada novo episódio
-SIM_PARAMS["RESET_INTERVAL"] = 3  # Define qual número e episódios serão rodados até realizar o reset
+SIM_PARAMS["RESET_INTERVAL"] = 10  # Define qual número e episódios serão rodados até realizar o reset
 SIM_PARAMS["CENTRALIZED_SPAWN"] = False  # Se True, força o spawn a acontecer no centro do mapa (Funciona apenas com Town02)
 SIM_PARAMS["SENSORS_BLACKOUT"] = False  # Se True, falha os sensores a cada X segundos, por Y segundos.
 SIM_PARAMS["MAP"] = "Town01"  # Mapa que será carregado na simulação. Ex.: Town01,Town02,Town10HD_Opt (só com ep. reset), Random,Gradual_Random
@@ -52,7 +52,7 @@ SIM_PARAMS["RANDOM_MAPS"] = ["Town02", "Town01"]  # Mapas que serão selecionado
 SIM_PARAMS["GRADUAL_RANDOM_INIT_EP_CHANGE"] = 50  # Número de episódios que irá rodar no início, antes de trocar o mapa
 SIM_PARAMS["GRADUAL_RANDOM_RATE"] = 0  # Tamanho do passo de redução do número de episódios que irá rodar antes de trocar o mapa
 SIM_PARAMS["KALMAN_FILTER"] = True  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
-SIM_PARAMS["NUM_EPISODES"] = int(0)  # total de episódios que serão rodados (0 or less trains forever)
+SIM_PARAMS["NUM_EPISODES"] = int(5)  # total de episódios que serão rodados (0 or less trains forever)
 SIM_PARAMS["EGO_VEHICLE_NUM"] = 1 # Número de Ego vehicles gerados na simulação
 SIM_PARAMS["NPC_VEHICLE_NUM"] = 0  # Número de NPC vehicles gerados na simulação
 SIM_PARAMS["STATIC_PROPS_NUM"] = 0  # Número de objetos estáticos que serão inseridos no meio da rua
@@ -91,7 +91,7 @@ SIM_PARAMS["SCREEN_HEIGHT"] = 1020  # 1080
 SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
 
 # ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
-SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
+SIM_PARAMS["TRAIN_MODE"] = "Play"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
 SIM_PARAMS["TRAIN_MODEL"] = "PPO_1"  # "Latest" ou "Nome do modelo" a ser utilizado.
 SIM_PARAMS["TRAIN_RESTART"] = True  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
 SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
@@ -114,17 +114,17 @@ HYPER_PARAMS["initial_std"] = float(0.7)  # Initial value of the std used in the
 HYPER_PARAMS["target_std"] = int(0.4)  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
 HYPER_PARAMS["value_scale"] = float(1.0)  # Value loss scale factor
 HYPER_PARAMS["entropy_scale"] = float(0.01)  # Entropy loss scale factor - Default: 0.01
-HYPER_PARAMS["horizon"] = int(128)  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
+HYPER_PARAMS["horizon"] = int(1000)  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
 HYPER_PARAMS["num_training"] = int(1)  # Number of times the model will be trained per episode
 HYPER_PARAMS["num_epochs"] = int(3)  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
-HYPER_PARAMS["batch_size"] = int(32)  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
+HYPER_PARAMS["batch_size"] = int(64)  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
 HYPER_PARAMS["synchronous"] = False  # Set this to True when running in a synchronous environment
 HYPER_PARAMS["action_smoothing"] = float(0.0)  #Action smoothing factor
 HYPER_PARAMS["model_name"] = "PPO_1"  # Name of the model to train. Output written to models/model_name
 HYPER_PARAMS["reward_fn"] = "rw_distance_normalized"  # Reward Function to use. See reward_functions.py for more info.
 HYPER_PARAMS["seed"] = 0  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
                         # with this option in our experience)
-HYPER_PARAMS["eval_interval"] = int(10)  # Number of episodes interval between evaluations - Default: 5
+HYPER_PARAMS["eval_interval"] = int(1)  # Number of episodes interval between evaluations - Default: 5
 #HYPER_PARAMS["save_eval_interval"] = int(10)  # Number of evaluations interval for saving (in addition to best rw)
 HYPER_PARAMS["eval_time"] = int(40)  # Tempo que a simulação irá rodar para avaliação - Default: 60
 HYPER_PARAMS["record_eval"] = True  # If True, save' videos of evaluation episodes to models/model_name/videos/
@@ -283,11 +283,10 @@ def main():
         logging.info("Starting training mode...")
         trainer_thread = Thread(target=train_RL.train, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
-        # sim.simulation_status = "Simulation"
     elif TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
         logging.info("Starting play mode...")
         trainer_thread = Thread(target=play_RL.play, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
-        trainer_thread.start()
+        # trainer_thread.start()
         sim.simulation_status = "Play_Loading"
     elif TRAIN_MODE == "Simulation":
         logging.info("Starting simulation mode...")
@@ -337,6 +336,9 @@ def main():
             sim.spawn_all()
             sim.simulation_reset = False
             First_episode = False
+
+        top_view.tick([], sim.ego_vehicle)  # atualiza a exibição do top-view
+        trainer_thread.start()
 
         # CONFIGURA O EXPECTADOR PARA VISÃO DE CIMA NO SERVIDOR
         spectator = sim.world.get_spectator()

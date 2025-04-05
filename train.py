@@ -285,7 +285,6 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
 
         #while not terminal_state:
         for idx_training in range(num_training):
-            print(f"Training step {idx_training + 1}/{num_training} started for episode {simulation.episodio_atual}")
             episode_idx = model.get_episode_idx()+1
             First_Episode = False  # variável usado para evitar gravação de modelo à toa
             simulation.training_atual = idx_training
@@ -298,16 +297,13 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
             #    single_veh = 10
             for idx_horizon in range(horizon):
                 simulation.horizonte_atual = idx_horizon
-                print(f"Training horizon {idx_horizon + 1}/{horizon} started for episode {simulation.episodio_atual}")
                 #action_lst, value_lst = [], []
                 #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
-                print("model.predict")
                 action, value = model.predict(state, write_to_summary=True)
 
                 # Perform action
                 #new_state_lst, reward_lst, terminal_state_lst = [], [], []
                 #for action, vehicle, veh_num in zip(action_lst,simulation.ego_vehicle, enumerate(simulation.ego_vehicle)):  # Roda N vezes, para N veículos simulados
-                print("env.step")
                 new_state, reward, terminal_state = env.step(action, simulation.ego_vehicle[current_veh], current_veh)  # , single_veh)
                 #new_state_lst.append(new_state)
                 #reward_lst.append(reward)
@@ -352,8 +348,6 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
 
             if top_view.input_control.quit:  # Evento tecla ESC ou crash detectados
                 break
-
-            print("Uhuuu let's train!!")
 
             # Calculate last value (bootstrap value)
             _, last_values = model.predict(state)  # usa último estado gerado pelo último carro

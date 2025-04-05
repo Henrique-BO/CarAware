@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: hbarros1/caraware:1.1.0
-    runtime: nvidia
+    # runtime: nvidia
     privileged: true
     network_mode: "host"
     environment:
@@ -32,8 +32,8 @@ services:
       - PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
       - DISPLAY=${DISPLAY}
       - XAUTHORITY=/root/.Xauthority
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all
+      # - NVIDIA_VISIBLE_DEVICES=all
+      # - NVIDIA_DRIVER_CAPABILITIES=all
       - QT_X11_NO_MITSHM=1 # Fix a bug with QT
       - SDL_VIDEODRIVER=x11
     working_dir: /app
@@ -47,8 +47,6 @@ services:
       - /etc/passwd:/etc/passwd:ro
       - /etc/group:/etc/group:ro
       - ${HOME}:${HOME}
-    devices:
-      - /dev/dri:/dev/dri
     command: tail -F anything
 
 volumes:

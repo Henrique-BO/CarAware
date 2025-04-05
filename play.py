@@ -1,5 +1,6 @@
 import os
 import random
+import time
 
 import numpy as np
 import tensorflow as tf
@@ -98,9 +99,11 @@ def play(hyper_params, sim_params, simulation, top_view):  # start_carla=True
         model.load_custom_checkpoint(train_model)
 
     print("Rodando em modo PREVIEW com modelo: \"{}\".".format(model_name))
+    time.sleep(5)
 
     simulation.simulation_status = "Play"
     play = True
+    print(simulation.ego_vehicle)
     run_eval(env, model, None, eval_time, simulation, ego_num, play, record_play_stats)
 
     #eval_reward = run_eval(env, model, eval_time=eval_time)

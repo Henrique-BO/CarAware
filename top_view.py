@@ -1479,7 +1479,7 @@ class World(object):
         display.blit(self.result_surface, (translation_offset[0] + center_offset[0],
                                            translation_offset[1]))
 
-    def ground_truth(self, display, all_veh=None, last_positions_training=False):
+    def ground_truth(self, display=None, all_veh=None, last_positions_training=False):
         # REÚNE IDENTIFICAÇÃO DOS OBJETOS CONFORME SIMULADOS
         self.gt_input_ego = []
         #self.gt_input.npc = []

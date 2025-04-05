@@ -100,10 +100,10 @@ def run_eval(env, model, video_filename=None, eval_time = 20, simulation = None,
 
         # Lógica para voltar a ciclagem de treinamento para o primeiro veículo
 
-        if current_veh == ego_num - 1:
-            current_veh = 0
-        else:
-            current_veh += 1
+        # if current_veh == ego_num - 1:
+        #     current_veh = 0
+        # else:
+        #     current_veh += 1
 
         # Registra distância RL
         distance[current_veh] = env.distance
