@@ -1,43 +1,18 @@
-import glob
-import os
-import sys
 import time
 import carla
 import logging
-#import random
 import cv2
 import numpy as np
-np.set_printoptions(threshold=np.inf)
-#import pygame
 import math
-#import re
-#import open3d as o3d
-#import top_view
-import simulation
-#from skimage import transform  # Help us to preprocess the frames
-#from collections import deque  # Ordered collection with ends
-import train as train_RL
-import play as play_RL
+import simulation.simulation as simulation
+import rl.train as train_RL
+import rl.play as play_RL
 from threading import Thread
-#from threading import Timer
-import subprocess
 
-# os.environ["CUDA_VISIBLE_DEVICES"]="-1" #disable Tensorflow GPU usage, these simple graphs run faster on CPU
-
-#from agents.navigation.behavior_agent import BehaviorAgent
-#from agents.navigation.basic_agent import BasicAgent
-
-# Desabilita warnings do tensorflow
+# Print settings
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-# CARREGA ARQUIVO .EGG COM MÓDULO PYTHON API DO CARLA
-# try:
-#     sys.path.append('/home/carla/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg')
-#     import carla
-# except IndexError:
-#     print("Erro ao carregar módulo Python API do CARLA")
-#     exit
+np.set_printoptions(threshold=np.inf)
 
 # ========== VARIÁVEIS GLOBAIS ==========
 SIM_PARAMS = {}
@@ -91,7 +66,7 @@ SIM_PARAMS["SCREEN_HEIGHT"] = 1020  # 1080
 SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
 
 # ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
-SIM_PARAMS["TRAIN_MODE"] = "Play"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
+SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
 SIM_PARAMS["TRAIN_MODEL"] = "PPO_1"  # "Latest" ou "Nome do modelo" a ser utilizado.
 SIM_PARAMS["TRAIN_RESTART"] = True  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
 SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
@@ -337,8 +312,9 @@ def main():
             sim.simulation_reset = False
             First_episode = False
 
-        top_view.tick([], sim.ego_vehicle)  # atualiza a exibição do top-view
-        trainer_thread.start()
+        if TRAIN_MODE == "PLAY":
+            top_view.tick([], sim.ego_vehicle)  # atualiza a exibição do top-view
+            trainer_thread.start()
 
         # CONFIGURA O EXPECTADOR PARA VISÃO DE CIMA NO SERVIDOR
         spectator = sim.world.get_spectator()

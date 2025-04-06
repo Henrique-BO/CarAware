@@ -1,3 +1,0 @@
-rodar no terminal o seguinte comando:
-
-tensorboard --logdir=C:\Users\tulioaraujo\PycharmProjects\carla\models\PPO_MODEL(PASTA_COM_LOGS)\logs
