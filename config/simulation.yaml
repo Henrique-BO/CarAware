@@ -1,0 +1,79 @@
+episodes:
+  map: "Town01"  # Mapa que será carregado na simulação
+  random_maps: ["Town02", "Town01"]  # Mapas que serão selecionados randomicamente
+  centralized_spawn: false  # Se true, força o spawn a acontecer no centro do mapa (Funciona apenas com Town02)
+  sensors_blackout: false  # Se true, falha os sensores a cada X segundos, por Y segundos.
+  kalman_filter: true  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
+  num_episodes: 5  # Total de episódios que serão rodados (0 or less trains forever)
+  episode_reset: true  # Se true, faz o respawn aleatório a cada novo episódio
+  reset_interval: 10  # Define qual número e episódios serão rodados até realizar o reset
+  gradual_random_init_ep_change: 50  # Número de episódios antes de trocar o mapa
+  gradual_random_rate: 0  # Redução do número de episódios antes de trocar o mapa
+
+vehicles:
+  ego_vehicle_num: 1  # Número de Ego vehicles gerados na simulação
+  npc_vehicle_num: 0  # Número de NPC vehicles gerados na simulação
+  static_props_num: 0  # Número de objetos estáticos inseridos no meio da rua
+  pedestrian_num: 0  # Número de pedestres na simulação
+  percentage_pedestrians_running: 0.0  # Quantidade de pedestres que correm
+  percentage_pedestrians_crossing: 0.0  # Quantidade de pedestres que cruzam a rua
+  vehicle_agent: "BEHAVIOR"  # Tipo de agente usado no controle dos veículos simulados
+  vehicle_behavior: "cautious"  # Comportamento do agente no modo BEHAVIOR
+  vehicle_distance: 3.0  # Distância de segurança entre veículos
+  vehicle_speed: "Limit"  # Velocidade fixa ou limite
+  num_min_waypoints: 20  # Número mínimo de waypoints de destino
+
+weather:
+  # 0-Clear Noon / 1-Clear Sunset / 2-Cloudy Noon / 3-Cloudy Sunset / 4-Default / 5-Hard Rain Noon / 6-Hard Rain Sunset
+  # 7-Mid Rainy Sunset / 8-Mid Rainy Noon / 9-Soft Rain Noon / 10-Soft Rain Sunset / 11-Wet Cloudy Noon
+  # 12-Wet Cloudy Sunset / 13-Wet Noon / 14-Wet Sunset
+  weather_preset: 2
+  custom_weather: false
+  custom_params:
+    sun_altitude: 30
+    fog_density: 0
+    fog_distance: 0
+    precipitation_value: 0
+    precipitation_deposits: 0
+    cloudiness: 0
+
+top_view:
+  show_hud: true  # Habilita exibição do HUD
+  show_id: true  # Habilita exibição do ID dos objetos no mapa
+  debug: true  # Habilita exibição de informações de sensores no HUD
+  screen_width: 1920  # Largura da tela
+  screen_height: 1020  # Altura da tela
+  fps: 30  # FPS do ambiente
+
+colors:
+  # CORES P/ POINT CLOUD SEMÂNTICO
+  labels:
+    - [255, 255, 255]  # None
+    - [70, 70, 70]  # Building
+    - [100, 40, 40]  # Fences
+    - [55, 90, 80]  # Other
+    - [220, 20, 60]  # Pedestrian
+    - [153, 153, 153]  # Pole
+    - [157, 234, 50]  # RoadLines
+    - [128, 64, 128]  # Road
+    - [244, 35, 232]  # Sidewalk
+    - [107, 142, 35]  # Vegetation
+    - [0, 0, 142]  # Vehicle
+    - [102, 102, 156]  # Wall
+    - [220, 220, 0]  # TrafficSign
+    - [70, 130, 180]  # Sky
+    - [81, 0, 81]  # Ground
+    - [150, 100, 100]  # Bridge
+    - [230, 150, 140]  # RailTrack
+    - [180, 165, 180]  # GuardRail
+    - [250, 170, 30]  # TrafficLight
+    - [110, 190, 160]  # Static
+    - [170, 120, 50]  # Dynamic
+    - [45, 60, 150]  # Water
+    - [145, 170, 100]  # Terrain
+  # CORES PARA BOUNDING BOXES GERADAS PELO YOLO (CÂMERA RGB)
+  yolo:
+    - [0, 255, 255]
+    - [255, 255, 0]
+    - [0, 255, 0]
+    - [255, 0, 0]

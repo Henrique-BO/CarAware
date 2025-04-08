@@ -1,245 +1,131 @@
+import argparse
 import time
 import carla
 import logging
 import cv2
 import numpy as np
 import math
+import yaml
+
 import simulation.simulation as simulation
 import rl.train as train_RL
 import rl.play as play_RL
+
 from threading import Thread
 
-# Print settings
+# Configure logging
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 np.set_printoptions(threshold=np.inf)
-
-# ========== VARIÁVEIS GLOBAIS ==========
-SIM_PARAMS = {}
-
-# ========== CONFIG DOS EPISÓDIOS DE SIMULAÇÃO ===========
-SIM_PARAMS["EPISODE_RESET"] = True  # Se True, faz o respawn aleatório a cada novo episódio
-SIM_PARAMS["RESET_INTERVAL"] = 10  # Define qual número e episódios serão rodados até realizar o reset
-SIM_PARAMS["CENTRALIZED_SPAWN"] = False  # Se True, força o spawn a acontecer no centro do mapa (Funciona apenas com Town02)
-SIM_PARAMS["SENSORS_BLACKOUT"] = False  # Se True, falha os sensores a cada X segundos, por Y segundos.
-SIM_PARAMS["MAP"] = "Town01"  # Mapa que será carregado na simulação. Ex.: Town01,Town02,Town10HD_Opt (só com ep. reset), Random,Gradual_Random
-SIM_PARAMS["RANDOM_MAPS"] = ["Town02", "Town01"]  # Mapas que serão selecionados randomicamente se MAP = "Random" ou "Gradual_Random"
-SIM_PARAMS["GRADUAL_RANDOM_INIT_EP_CHANGE"] = 50  # Número de episódios que irá rodar no início, antes de trocar o mapa
-SIM_PARAMS["GRADUAL_RANDOM_RATE"] = 0  # Tamanho do passo de redução do número de episódios que irá rodar antes de trocar o mapa
-SIM_PARAMS["KALMAN_FILTER"] = True  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
-SIM_PARAMS["NUM_EPISODES"] = int(5)  # total de episódios que serão rodados (0 or less trains forever)
-SIM_PARAMS["EGO_VEHICLE_NUM"] = 1 # Número de Ego vehicles gerados na simulação
-SIM_PARAMS["NPC_VEHICLE_NUM"] = 0  # Número de NPC vehicles gerados na simulação
-SIM_PARAMS["STATIC_PROPS_NUM"] = 0  # Número de objetos estáticos que serão inseridos no meio da rua
-SIM_PARAMS["PEDESTRIAN_NUM"] = 0  # Número de pedestres na simulação
-SIM_PARAMS["PERCENTAGE_PEDESTRIANS_RUNNING"] = 0.0  # how many pedestrians will run
-SIM_PARAMS["PERCENTAGE_PEDESTRIANS_CROSSING"] = 0.0  # how many pedestrians will walk through the road
-# Define o comportamento da direção automática dos carros
-SIM_PARAMS["VEHICLE_AGENT"] = "BEHAVIOR"  # Tipo de agente usado no controle dos veículos simulados - Opções: "BEHAVIOR", "BASIC", "SERVER", "STOP"
-SIM_PARAMS["VEHICLE_BEHAVIOR"] = "cautious"  # Opções do modo BEHAVIOR: "cautious", "normal", "aggressive", "randomized"
-SIM_PARAMS["VEHICLE_DISTANCE"] = 3.0  # Distância de segurança entre veículos, para não baterem
-SIM_PARAMS["VEHICLE_SPEED"] = "Limit"  # Define velocidade fixa dos veículos (numeral 0-100) ou se seguem o limite (string "Limit")
-SIM_PARAMS["NUM_MIN_WAYPOINTS"] = 20  # Número mínimo de waypoints de destino, caso sejam utilizados (modo behavior)
-#OBS: Modo SERVER pesa no servidor, modo BASIC pesa no cliente
-
-# ============= CONFIGURAÇÃO DO CLIMA ===========
-SIM_PARAMS["CUSTOM_WEATHER"] = False
-# PARÂMETROS CUSTOM
-SIM_PARAMS["SUN_ALTITUDE"] = 30
-SIM_PARAMS["FOG_DENSITY"] = 0
-SIM_PARAMS["FOG_DISTANCE"] = 0
-SIM_PARAMS["PRECIPITATION_VALUE"] = 0
-SIM_PARAMS["PRECIPITATION_DEPOSITS"] = 0
-SIM_PARAMS["CLOUDINESS"] = 0
-# PRESETS
-SIM_PARAMS["WEATHER_PRESET"] = 2  # 2-Default
-# 0-Clear Noon / 1-Clear Sunset / 2-Cloudy Noon / 3-Cloudy Sunset / 4-Default / 5-Hard Rain Noon / 6-Hard Rain Sunset
-# 7-Mid Rainy Sunset / 8-Mid Rainy Noon / 9-Soft Rain Noon / 10-Soft Rain Sunset / 11-Wet Cloudy Noon
-# 12-Wet Cloudy Sunset / 13-Wet Noon / 14-Wet Sunset
-
-# ============================== CONFIG DO TOP-VIEW ===================================
-SIM_PARAMS["TOP_VIEW_SHOW_HUD"] = True  # Habilita exibição do HUD
-SIM_PARAMS["TOP_VIEW_SHOW_ID"] = True  # Habilita exibição do ID dos objetos no mapa
-SIM_PARAMS["DEBUG"] = True  # Habilita exibição de informações de sensores no HUD (reduz FPS)
-SIM_PARAMS["SCREEN_WIDTH"] = 1920  # 1920
-SIM_PARAMS["SCREEN_HEIGHT"] = 1020  # 1080
-SIM_PARAMS["CONFIG_FPS"] = 30  # Set this to the FPS of the environment
-
-# ======================== CONFIG DO REINFORCEMENT LEARNING ===========================
-SIM_PARAMS["TRAIN_MODE"] = "Train"  # Define o modo de execução do RL: "Train", "Play" ou "Simulation"
-SIM_PARAMS["TRAIN_MODEL"] = "PPO_1"  # "Latest" ou "Nome do modelo" a ser utilizado.
-SIM_PARAMS["TRAIN_RESTART"] = True  # Se True, sobrescreve o modelo criado previamente, em False, continua treinamento
-SIM_PARAMS["PREDICTION_PREVIEW"] = True  # Se True, desenha a previsão na visão Top-view
-SIM_PARAMS["PREDICTION_HUD"] = True  # Se True, insere informações de prediction no HUD
-SIM_PARAMS["LAST_POSITIONS_TRAINING"] = False  # Se True, passa as últimas 4 posições para a rede no treinamento
-SIM_PARAMS["RECORD_PLAY_STATS"] = False  # Se True, grava no Tensorboard as distâncias prediction e kalman
-
-#  Melhores modelos:
-#  PPO_MODEL_moving_restart_multi_agent_rw_distance_normalized_step3_v1:
-#  "model.ckpt_Interval_14_23_05_eps_-695" / "model.ckpt_Interval_14_42_57_eps_-700"
-
-# ============================= HYPER PARAMETERS ========================================
-HYPER_PARAMS = {}
-HYPER_PARAMS["learning_rate"] = float(8e-5)  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
-HYPER_PARAMS["lr_decay"] = float(1.0)  # Per-episode exponential learning rate decay - Default: 1.0 (mantêm constante)
-HYPER_PARAMS["discount_factor"] = float(0.99)  # GAE discount factor
-HYPER_PARAMS["gae_lambda"] = float(0.95)  # GAE lambda
-HYPER_PARAMS["ppo_epsilon"] = float(0.2)  # PPO Epsilon - Default: 0.2
-HYPER_PARAMS["initial_std"] = float(0.7)  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
-HYPER_PARAMS["target_std"] = int(0.4)  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
-HYPER_PARAMS["value_scale"] = float(1.0)  # Value loss scale factor
-HYPER_PARAMS["entropy_scale"] = float(0.01)  # Entropy loss scale factor - Default: 0.01
-HYPER_PARAMS["horizon"] = int(1000)  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
-HYPER_PARAMS["num_training"] = int(1)  # Number of times the model will be trained per episode
-HYPER_PARAMS["num_epochs"] = int(3)  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
-HYPER_PARAMS["batch_size"] = int(64)  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
-HYPER_PARAMS["synchronous"] = False  # Set this to True when running in a synchronous environment
-HYPER_PARAMS["action_smoothing"] = float(0.0)  #Action smoothing factor
-HYPER_PARAMS["model_name"] = "PPO_1"  # Name of the model to train. Output written to models/model_name
-HYPER_PARAMS["reward_fn"] = "rw_distance_normalized"  # Reward Function to use. See reward_functions.py for more info.
-HYPER_PARAMS["seed"] = 0  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
-                        # with this option in our experience)
-HYPER_PARAMS["eval_interval"] = int(1)  # Number of episodes interval between evaluations - Default: 5
-#HYPER_PARAMS["save_eval_interval"] = int(10)  # Number of evaluations interval for saving (in addition to best rw)
-HYPER_PARAMS["eval_time"] = int(40)  # Tempo que a simulação irá rodar para avaliação - Default: 60
-HYPER_PARAMS["record_eval"] = True  # If True, save' videos of evaluation episodes to models/model_name/videos/
-# HYPER_PARAMS["reset_mode"] = RESET_MODE  5# Usado em conjunto com restart, define se reinicia sempre ou só target
-
-# =========== CONFIGURAÇÃO DOS SENSORES ( HABILITAÇÃO É True ou False) ============================
-SENS_PARAMS = {}
-# SPEED AND STEERING ANGLE SENSOR (SPD_SAS) - Funciona apenas com carro em movimento
-SENS_PARAMS["SENS_SPD_SAS"] = True
-SENS_PARAMS["SENS_SPD_SAS_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição
-SENS_PARAMS["SENS_SPD_SAS_ERROR"] = 0.01  # Default: 0.001
-SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_ON"] = False  # Habilita/desabilita blackout desse sensor
-SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_MIN"] = 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos.
-SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_MAX"] = 10
-SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do intervalo de blackout
-SENS_PARAMS["SENS_SPD_SAS_BLACKOUT_INTERVAL_MAX"] = 10
-
-# GLOBAL NAVIGATION SATELLITE SYSTEM (GNSS)
-SENS_PARAMS["SENS_GNSS"] = True
-SENS_PARAMS["SENS_GNSS_PREVIEW"] = True  # Define se os pontos detectados serão desenhados na tela
-SENS_PARAMS["SENS_GNSS_SAMPLING"] = 0.1 # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 1
-SENS_PARAMS["SENS_GNSS_ERROR"] = 0.00005  # Default: Low = 0.00001 / High = 0.0001
-SENS_PARAMS["SENS_GNSS_BIAS"] = 0.0
-SENS_PARAMS["SENS_GNSS_BLACKOUT_ON"] = True  # Habilita/desabilita blackout desse sensor
-SENS_PARAMS["SENS_GNSS_BLACKOUT_MIN"] = 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos.
-SENS_PARAMS["SENS_GNSS_BLACKOUT_MAX"] = 10
-SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do intervalo de blackout
-SENS_PARAMS["SENS_GNSS_BLACKOUT_INTERVAL_MAX"] = 10
-
-# INERTIAL MEASUREMENT UNIT (IMU)
-SENS_PARAMS["SENS_IMU"] = True
-SENS_PARAMS["SENS_IMU_SAMPLING"] = 0.1  # tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
-SENS_PARAMS["SENS_IMU_ACCEL_ERROR"] = 0.001  # Default: 0.00001
-SENS_PARAMS["SENS_IMU_GYRO_ERROR"] = 0.001  # Default: 0.00001
-SENS_PARAMS["SENS_IMU_GYRO_BIAS"] = 0.0
-SENS_PARAMS["SENS_IMU_BLACKOUT_ON"] = False  # Habilita/desabilita blackout desse sensor
-SENS_PARAMS["SENS_IMU_BLACKOUT_MIN"] = 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos.
-SENS_PARAMS["SENS_IMU_BLACKOUT_MAX"] = 10
-SENS_PARAMS["SENS_IMU_BLACKOUT_INTERVAL_MIN"] = 5  # Tempo em segundos do intervalo de blackout
-SENS_PARAMS["SENS_IMU_BLACKOUT_INTERVAL_MAX"] = 10
-
-# COLLISION DETECTION (COL)  # Resets the episode if there is a collision and the vehicle stops
-SENS_PARAMS["SENS_COL"] = False
-
-# OBSTACLE DETECTION (OBS)
-SENS_PARAMS["SENS_OBS"] = False
-
-# CAMERA DE VÍDEO A CORES (RGB)
-SENS_PARAMS["SENS_RGB"] = False
-SENS_PARAMS["SENS_RGB_PREVIEW"] = False  # Define se as imagens captadas serão desenhadas na tela
-SENS_PARAMS["SENS_RGB_SAMPLING"] = 3  # tempo em segundos entre cada aquisição
-SENS_PARAMS["SENS_RGB_STACK_SIZE"] = 4  # define o tamanho do buffer com X imagens para alimentar a RN
-SENS_PARAMS["RGB_MODE"] = "SEMANTIC"  # Valores possíveis: YOLO, BINARY, SEMANTIC
-SENS_PARAMS["IM_WIDTH"] = 320  # 640   160
-SENS_PARAMS["IM_HEIGHT"] = 160  # 480   80
-SENS_PARAMS["SENS_RGB_BLACKOUT"] = 0  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos. 0 = blackout desativado
-SENS_PARAMS["SENS_RGB_BLACKOUT_INTERVAL"] = 10  # Tempo em segundos do intervalo de blackout
-
-# LIGHT DETECTION AND RANGING (LIDAR)
-SENS_PARAMS["SENS_LIDAR"] = False
-SENS_PARAMS["SENS_LIDAR_PREVIEW"] = False  # Define se os pontos detectados serão desenhados na tela
-SENS_PARAMS["SENS_LIDAR_SAMPLING"] = 0.3  # Default 0
-SENS_PARAMS["SENS_LIDAR_RANGE"] = 20  # 20
-SENS_PARAMS["SENS_LIDAR_NUM_POINTS"] = 90000  # 90000
-SENS_PARAMS["SENS_LIDAR_FREQUENCY"] = 20  # 40
-SENS_PARAMS["SENS_LIDAR_CHANNELS"] = 32  # 32
-SENS_PARAMS["SENS_LIDAR_SHOW_FACTOR"] = 10  # 10
-SENS_PARAMS["SENS_LIDAR_TOP_VIEW"] = "INTEREST"  # valores possíveis: ALL, INTEREST
-SENS_PARAMS["SENS_LIDAR_BLACKOUT"] = 0  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos. 0 = blackout desativado
-SENS_PARAMS["SENS_LIDAR_BLACKOUT_INTERVAL"] = 10  # Tempo em segundos do intervalo de blackout
-
-# ======== CORES P/ POINT CLOUD SEMÂNTICO ========
-SENS_PARAMS["LABEL_COLORS"] = np.array([
-    (255, 255, 255),  # None
-    (70, 70, 70),  # Building
-    (100, 40, 40),  # Fences
-    (55, 90, 80),  # Other
-    (220, 20, 60),  # Pedestrian
-    (153, 153, 153),  # Pole
-    (157, 234, 50),  # RoadLines
-    (128, 64, 128),  # Road
-    (244, 35, 232),  # Sidewalk
-    (107, 142, 35),  # Vegetation
-    (0, 0, 142),  # Vehicle
-    (102, 102, 156),  # Wall
-    (220, 220, 0),  # TrafficSign
-    (70, 130, 180),  # Sky
-    (81, 0, 81),  # Ground
-    (150, 100, 100),  # Bridge
-    (230, 150, 140),  # RailTrack
-    (180, 165, 180),  # GuardRail
-    (250, 170, 30),  # TrafficLight
-    (110, 190, 160),  # Static
-    (170, 120, 50),  # Dynamic
-    (45, 60, 150),  # Water
-    (145, 170, 100),  # Terrain
-])  # / 255.0 # normalize each channel [0-1] since is what Open3D uses
-
-# CORES PARA BOUNDING BOXES GERADAS PELO YOLO (CÂMERA RGB)
-SENS_PARAMS["YOLO_COLORS"] = [(0, 255, 255), (255, 255, 0), (0, 255, 0), (255, 0, 0)]
-
-
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="CarAware Simulation Framework")
+
+    # Define subcommands
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands: simulation, train, play")
+
+    # Common arguments for all subcommands
+    for subcommand in ["simulation", "train", "play"]:
+        subparser = subparsers.add_parser(subcommand, help=f"{subcommand.capitalize()} mode")
+        subparser.add_argument('--simulation', type=str, default='config/simulation.yaml', help='Path to the main configuration file')
+        subparser.add_argument('--sensors', type=str, default='config/sensors.yaml', help='Path to the sensors configuration file')
+        subparser.add_argument('--training', type=str, default='config/training.yaml', help='Path to the hyperparameters file')
+        subparser.add_argument('--override', type=str, nargs='*', help='Override specific configurations (e.g., key1=value1 key2=value2)')
+
+    return parser.parse_args()
+
+def load_config(simulation_config, sensor_config, train_config=None):
+    # Load the simulation configuration
+    with open(simulation_config, 'r') as sim_file:
+        SIM_PARAMS = yaml.safe_load(sim_file)
+
+    # Load the sensors configuration
+    with open(sensor_config, 'r') as sens_file:
+        SENS_PARAMS = yaml.safe_load(sens_file)
+
+    # Load the training configuration if provided
+    TRAIN_PARAMS = {}
+    if train_config:
+        with open(train_config, 'r') as train_file:
+            TRAIN_PARAMS = yaml.safe_load(train_file)
+
+    return SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS
+
+def apply_overrides(SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS, overrides):
+    """Apply command-line overrides to the configuration dictionary."""
+    if overrides:
+        for override in overrides:
+            key, value = override.split('=')
+
+            # Define which dictionary to update based on the key
+            if key.startswith("simulation."):
+                config = SIM_PARAMS
+                key = key[len("simulation."):]
+            elif key.startswith("sensors."):
+                config = SENS_PARAMS
+                key = key[len("sensors."):]
+            elif key.startswith("training."):
+                config = TRAIN_PARAMS
+                key = key[len("training."):]
+            else:
+                raise ValueError(f"Invalid override key: {key}")
+
+            # Convert value to int, float, or keep as string
+            try:
+                value = eval(value)
+            except:
+                pass
+            keys = key.split('.')  # Support nested keys (e.g., "SIM_PARAMS.MAP")
+            d = config
+            for k in keys[:-1]:
+                d = d.setdefault(k, {})
+            d[keys[-1]] = value
+    return SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS
+
 # ===== PROGRAMA PRINCIPAL =====
-def main():
+def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
     logging.info("Starting main function...")
 
     # UNPACK DAS VIARIÁVEIS UTILIZADAS NESSE PROGRAMA
-    MAP = SIM_PARAMS["MAP"]
-    TRAIN_MODE = SIM_PARAMS["TRAIN_MODE"]
-    EPISODE_RESET = SIM_PARAMS["EPISODE_RESET"]
-    EGO_VEHICLE_NUM = SIM_PARAMS["EGO_VEHICLE_NUM"]
-    NPC_VEHICLE_NUM = SIM_PARAMS["NPC_VEHICLE_NUM"]
-    STATIC_PROPS_NUM = SIM_PARAMS["STATIC_PROPS_NUM"]
-    PEDESTRIAN_NUM = SIM_PARAMS["PEDESTRIAN_NUM"]
-    PREDICTION_HUD = SIM_PARAMS["PREDICTION_HUD"]
-    DEBUG = SIM_PARAMS["DEBUG"]
-    VEHICLE_AGENT = SIM_PARAMS["VEHICLE_AGENT"]
-    TOP_VIEW_SHOW_HUD = SIM_PARAMS["TOP_VIEW_SHOW_HUD"]
-    NUM_MIN_WAYPOINTS = SIM_PARAMS["NUM_MIN_WAYPOINTS"]
+    episodes_config = SIM_PARAMS["episodes"]
+    vehicles_config = SIM_PARAMS["vehicles"]
+    top_view_config = SIM_PARAMS["top_view"]
 
-    SENS_GNSS = SENS_PARAMS["SENS_GNSS"]
-    SENS_IMU = SENS_PARAMS["SENS_IMU"]
-    SENS_SPD_SAS = SENS_PARAMS["SENS_SPD_SAS"]
-    SENS_OBS = SENS_PARAMS["SENS_OBS"]
-    SENS_COL = SENS_PARAMS["SENS_COL"]
-    SENS_RGB = SENS_PARAMS["SENS_RGB"]
-    SENS_LIDAR = SENS_PARAMS["SENS_LIDAR"]
-    SENS_RGB_PREVIEW = SENS_PARAMS["SENS_RGB_PREVIEW"]
+    MAP = episodes_config["map"]
+    EPISODE_RESET = episodes_config["episode_reset"]
+    NUM_EPISODES = episodes_config["num_episodes"]
+    RESET_INTERVAL = episodes_config["reset_interval"]
+    KALMAN_FILTER = episodes_config["kalman_filter"]
 
-    KALMAN_FILTER = SIM_PARAMS["KALMAN_FILTER"]
+    EGO_VEHICLE_NUM = vehicles_config["ego_vehicle_num"]
+    NPC_VEHICLE_NUM = vehicles_config["npc_vehicle_num"]
+    STATIC_PROPS_NUM = vehicles_config["static_props_num"]
+    PEDESTRIAN_NUM = vehicles_config["pedestrian_num"]
+    VEHICLE_AGENT = vehicles_config["vehicle_agent"]
+    NUM_MIN_WAYPOINTS = vehicles_config["num_min_waypoints"]
 
-    RESET_INTERVAL = SIM_PARAMS["RESET_INTERVAL"]
+    DEBUG = top_view_config["debug"]
+    TOP_VIEW_SHOW_HUD = top_view_config["show_hud"]
+
+    SENS_GNSS = SENS_PARAMS["gnss"]["enabled"]
+    SENS_IMU = SENS_PARAMS["imu"]["enabled"]
+    SENS_SPD_SAS = SENS_PARAMS["spd_sas"]["enabled"]
+    SENS_OBS = SENS_PARAMS["obstacle"]["enabled"]
+    SENS_COL = SENS_PARAMS["collision"]["enabled"]
+    SENS_RGB = SENS_PARAMS["rgb_camera"]["enabled"]
+    SENS_RGB_PREVIEW = SENS_PARAMS["rgb_camera"]["preview"]
+    SENS_LIDAR = SENS_PARAMS["lidar"]["enabled"]
+
+    PREDICTION_HUD = TRAIN_PARAMS.get("prediction_hud", False)
+    HORIZON = TRAIN_PARAMS["hyperparameters"]["horizon"]
+    NUM_TRAINING = TRAIN_PARAMS["hyperparameters"]["num_training"]
 
     logging.info("Simulation parameters and sensor configurations unpacked.")
 
     # INICIALIZA AS CLASSES DA SIMULAÇÃO
-    sim = simulation.SimulationSetup(SIM_PARAMS, SENS_PARAMS)  # Classe com setup da simulação
+    sim = simulation.SimulationSetup(SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS)  # Classe com setup da simulação
     sim.simulation_status = "Loading"  # Informa que a simulação está sendo carregada
     logging.info("Simulation setup initialized.")
 
@@ -247,7 +133,7 @@ def main():
     sim_pause.start(sim)
     sim_pause.pause(sim)  # pausa a simulação para configuração do primeiro episódio
 
-    top_view = simulation.TopView(SIM_PARAMS)  # Classe que abre a janela de Top View
+    top_view = simulation.TopView(SIM_PARAMS, TRAIN_PARAMS)  # Classe que abre a janela de Top View
     if MAP == "Random" or MAP == "Gradual_Random":
         top_view.start(sim.chosen_random_map)
     else:
@@ -256,11 +142,11 @@ def main():
 
     if TRAIN_MODE == "Train":  # inicializa thread p/ treinamento RL
         logging.info("Starting training mode...")
-        trainer_thread = Thread(target=train_RL.train, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
+        trainer_thread = Thread(target=train_RL.train, args=(TRAIN_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
     elif TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
         logging.info("Starting play mode...")
-        trainer_thread = Thread(target=play_RL.play, args=(HYPER_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
+        trainer_thread = Thread(target=play_RL.play, args=(TRAIN_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
         # trainer_thread.start()
         sim.simulation_status = "Play_Loading"
     elif TRAIN_MODE == "Simulation":
@@ -294,10 +180,10 @@ def main():
         #    top_view.start(MAP)
 
         # Determina se o número de episódios é infinito ou não
-        if SIM_PARAMS["NUM_EPISODES"] == 0:
+        if NUM_EPISODES == 0:
             num_episodes = math.inf
         else:
-            num_episodes = str(SIM_PARAMS["NUM_EPISODES"])
+            num_episodes = str(NUM_EPISODES)
 
         # INICIALIZA O EPISÓDIO "EPISODE_NUM"
         # registra os eventos em formato de log
@@ -327,7 +213,7 @@ def main():
         if sim.simulation_status != "Play_Loading" and sim.simulation_status != "Simulation":
             sim.simulation_status = "Ready"
             # registra os eventos em formato de log
-            print("\nEpisódio Iniciado - Rodando por", str(HYPER_PARAMS["horizon"]), "horizontes")
+            print("\nEpisódio Iniciado - Rodando por", str(HORIZON), "horizontes")
 
         logging.info("Resuming simulation...")
         sim_pause.resume(sim, SIM_PARAMS)  # RESUME A SIMULAÇÃO APÓS A CONFIGURAÇÃO
@@ -367,8 +253,8 @@ def main():
                                str(sim.simulation_status),
                                str(sim.episodio_atual), num_episodes,
                                num_restarts,
-                               str(sim.training_atual+1), str(HYPER_PARAMS["num_training"]),
-                               sim.horizonte_atual + 1, HYPER_PARAMS["horizon"],
+                               str(sim.training_atual+1), str(NUM_TRAINING),
+                               sim.horizonte_atual + 1, HORIZON,
                                '{:02}:{:02}:{:02}'.format(sim.sim_total_time // 3600, sim.sim_total_time % 3600 // 60, sim.sim_total_time % 60),
                                #str(format(time.time() - sim_start_time, ".2f")),
                                str(round(time.time() - ep_start_time)),
@@ -489,30 +375,11 @@ def main():
     return top_view.input_control.quit_reason
 
 if __name__ == '__main__':
+    args = parse_args()
+    SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS = load_config(args.simulation, args.sensors, args.training)
+    SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS = apply_overrides(SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS, args.override)
+
     logging.info("Program started.")
-    result = main()
+    result = main(args.command, SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS)
     logging.info(f"Program finished with result: {result}")
     print(result)
-
-    # while True:
-
-    #     try:
-    #         subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
-    #         pass
-    #     except:
-    #         pass
-
-    #     os.startfile("C:\carla\CarlaUE4.exe") # ABRE O CARLA
-    #     time.sleep(5)
-    #     #subprocess.call(["C:\carla13\CarlaUE4.exe","-fps=5"])
-    #     result = main()
-
-    #     if result == "Crash":
-    #         print("Crash detectado no CarlaUE4, reiniciando simulação para continuar treinamento")
-    #     else:  # Crash
-    #         print("Simulação encerrada através da tecla ESC")
-    #         break
-
-    # subprocess.call('taskkill /f /fi "IMAGENAME eq CarlaUE4*"', shell=True)
-
-    # sys.exit()

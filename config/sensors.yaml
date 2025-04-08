@@ -1,0 +1,70 @@
+# SPEED AND STEERING ANGLE SENSOR
+spd_sas: # Funciona apenas com carro em movimento
+  enabled: true
+  sampling: 0.1  # Tempo em segundos entre cada aquisição
+  error: 0.01  # Default: 0.001
+  blackout_on: false  # Habilita/desabilita blackout desse sensor
+  blackout_min: 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos
+  blackout_max: 10
+  blackout_interval_min: 5  # Tempo em segundos do intervalo de blackout
+  blackout_interval_max: 10
+
+# GLOBAL NAVIGATION SATELLITE SYSTEM (GNSS)
+gnss:
+  enabled: true
+  preview: true  # Define se os pontos detectados serão desenhados na tela
+  sampling: 0.1  # Tempo em segundos entre cada aquisição - Default: 0.1 / Real: 1
+  error: 0.00005  # Default: Low = 0.00001 / High = 0.0001
+  bias: 0.0
+  blackout_on: true  # Habilita/desabilita blackout desse sensor
+  blackout_min: 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos
+  blackout_max: 10
+  blackout_interval_min: 5  # Tempo em segundos do intervalo de blackout
+  blackout_interval_max: 10
+
+# INERTIAL MEASUREMENT UNIT (IMU)
+imu:
+  enabled: true
+  sampling: 0.1  # Tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
+  accel_error: 0.001  # Default: 0.00001
+  gyro_error: 0.001  # Default: 0.00001
+  gyro_bias: 0.0
+  blackout_on: false  # Habilita/desabilita blackout desse sensor
+  blackout_min: 5  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos
+  blackout_max: 10
+  blackout_interval_min: 5  # Tempo em segundos do intervalo de blackout
+  blackout_interval_max: 10
+
+# COLLISION DETECTION (COL)
+collision:
+  enabled: false  # Resets the episode if there is a collision and the vehicle stops
+
+# OBSTACLE DETECTION (OBS)
+obstacle:
+  enabled: false
+
+# CAMERA DE VÍDEO A CORES (RGB)
+rgb_camera:
+  enabled: false
+  preview: false  # Define se as imagens captadas serão desenhadas na tela
+  sampling: 3  # Tempo em segundos entre cada aquisição
+  stack_size: 4  # Define o tamanho do buffer com X imagens para alimentar a RN
+  mode: "semantic"  # Valores possíveis: yolo, binary, semantic
+  image_width: 320  # 640   160
+  image_height: 160  # 480   80
+  blackout: 0  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos. 0 = blackout desativado
+  blackout_interval: 10  # Tempo em segundos do intervalo de blackout
+
+# LIGHT DETECTION AND RANGING (LIDAR)
+lidar:
+  enabled: false
+  preview: false  # Define se os pontos detectados serão desenhados na tela
+  sampling: 0.3  # Default 0
+  range: 20  # 20
+  num_points: 90000  # 90000
+  frequency: 20  # 40
+  channels: 32  # 32
+  show_factor: 10  # 10
+  top_view: "interest"  # Valores possíveis: all, interest
+  blackout: 0  # Tempo em segundos que o sensor ficará desabilitado a cada X períodos. 0 = blackout desativado
+  blackout_interval: 10  # Tempo em segundos do intervalo de blackout

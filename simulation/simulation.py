@@ -23,86 +23,132 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class SimulationSetup:
 
     # ===== INICIALIZA OS OBJETOS DA SIMULAÇÃO =====
-    def __init__(self, sim_params, sens_params):
+    def __init__(self, sim_params, sens_params, train_params):
         logging.info("Initializing simulation setup...")
-        # UNPACK DE VARIÁVEIS
-        self.ego_vehicle_num = sim_params["EGO_VEHICLE_NUM"]
-        self.npc_vehicle_num = sim_params["NPC_VEHICLE_NUM"]
-        self.static_props_num = sim_params["STATIC_PROPS_NUM"]
-        self.map = sim_params["MAP"]
-        self.random_maps = sim_params["RANDOM_MAPS"]
-        self.gradual_random_init_ep_change = sim_params["GRADUAL_RANDOM_INIT_EP_CHANGE"]
-        self.sensors_blackout = sim_params["SENSORS_BLACKOUT"]
-        self.gradual_random_rate = sim_params["GRADUAL_RANDOM_RATE"]
-        self.vehicle_distance = sim_params["VEHICLE_DISTANCE"]
-        self.custom_weather = sim_params["CUSTOM_WEATHER"]
-        self.sun_altitude = sim_params["SUN_ALTITUDE"]
-        self.precipitation_value = sim_params["PRECIPITATION_VALUE"]
-        self.precipitation_deposits = sim_params["PRECIPITATION_DEPOSITS"]
-        self.cloudiness = sim_params["CLOUDINESS"]
-        self.fog_density = sim_params["FOG_DENSITY"]
-        self.fog_distance = sim_params["FOG_DISTANCE"]
-        self.weather_preset = sim_params["WEATHER_PRESET"]
-        self.pedestrian_num = sim_params["PEDESTRIAN_NUM"]
-        self.percentage_pedestrians_running = sim_params["PERCENTAGE_PEDESTRIANS_RUNNING"]
-        self.percentage_pedestrians_crossing = sim_params["PERCENTAGE_PEDESTRIANS_CROSSING"]
-        self.vehicle_agent = sim_params["VEHICLE_AGENT"]
-        self.vehicle_speed = sim_params["VEHICLE_SPEED"]
-        self.vehicle_behavior = sim_params["VEHICLE_BEHAVIOR"]
-        self.prediction_preview = sim_params["PREDICTION_PREVIEW"]
-        self.centralized_spawn = sim_params["CENTRALIZED_SPAWN"]
 
-        self.rgb_mode = sens_params["RGB_MODE"]
-        self.sens_obs = sens_params["SENS_OBS"]
-        self.sens_col = sens_params["SENS_COL"]
-        self.sens_imu = sens_params["SENS_IMU"]
-        self.sens_gnss = sens_params["SENS_GNSS"]
-        self.sens_rgb = sens_params["SENS_RGB"]
-        self.sens_spd_sas = sens_params["SENS_SPD_SAS"]
-        self.sens_lidar = sens_params["SENS_LIDAR"]
-        self.im_height = sens_params["IM_HEIGHT"]
-        self.im_width = sens_params["IM_WIDTH"]
-        self.yolo_colors = sens_params["YOLO_COLORS"]
-        self.sens_gnss_sampling = sens_params["SENS_GNSS_SAMPLING"]
-        self.sens_gnss_preview = sens_params["SENS_GNSS_PREVIEW"]
-        self.sens_gnss_blackout_on = sens_params["SENS_GNSS_BLACKOUT_ON"]
-        self.sens_gnss_blackout_min = sens_params["SENS_GNSS_BLACKOUT_MIN"]
-        self.sens_gnss_blackout_max = sens_params["SENS_GNSS_BLACKOUT_MAX"]
-        self.sens_gnss_blackout_interval_min = sens_params["SENS_GNSS_BLACKOUT_INTERVAL_MIN"]
-        self.sens_gnss_blackout_interval_max = sens_params["SENS_GNSS_BLACKOUT_INTERVAL_MAX"]
-        self.sens_gnss_error = sens_params["SENS_GNSS_ERROR"]
-        self.sens_gnss_bias = sens_params["SENS_GNSS_BIAS"]
-        self.sens_imu_blackout_on = sens_params["SENS_IMU_BLACKOUT_ON"]
-        self.sens_imu_blackout_min = sens_params["SENS_IMU_BLACKOUT_MIN"]
-        self.sens_imu_blackout_max = sens_params["SENS_IMU_BLACKOUT_MAX"]
-        self.sens_imu_blackout_interval_min = sens_params["SENS_IMU_BLACKOUT_INTERVAL_MIN"]
-        self.sens_imu_blackout_interval_max = sens_params["SENS_IMU_BLACKOUT_INTERVAL_MAX"]
-        self.sens_imu_accel_error = sens_params["SENS_IMU_ACCEL_ERROR"]
-        self.sens_imu_gyro_error = sens_params["SENS_IMU_GYRO_ERROR"]
-        self.sens_imu_gyro_bias = sens_params["SENS_IMU_GYRO_BIAS"]
-        self.sens_imu_sampling = sens_params["SENS_IMU_SAMPLING"]
-        self.sens_rgb_blackout = sens_params["SENS_RGB_BLACKOUT"]
-        self.sens_rgb_blackout_interval = sens_params["SENS_RGB_BLACKOUT_INTERVAL"]
-        self.sens_rgb_sampling = sens_params["SENS_RGB_SAMPLING"]
-        self.sens_rgb_stack_size = sens_params["SENS_RGB_STACK_SIZE"]
-        self.sens_lidar_blackout = sens_params["SENS_LIDAR_BLACKOUT"]
-        self.sens_lidar_top_view = sens_params["SENS_LIDAR_TOP_VIEW"]
-        self.sens_lidar_preview = sens_params["SENS_LIDAR_PREVIEW"]
-        self.sens_lidar_show_factor = sens_params["SENS_LIDAR_SHOW_FACTOR"]
-        self.sens_lidar_channels = sens_params["SENS_LIDAR_CHANNELS"]
-        self.sens_lidar_blackout_interval = sens_params["SENS_LIDAR_BLACKOUT_INTERVAL"]
-        self.sens_lidar_num_points = sens_params["SENS_LIDAR_NUM_POINTS"]
-        self.sens_lidar_frequency = sens_params["SENS_LIDAR_FREQUENCY"]
-        self.sens_lidar_range = sens_params["SENS_LIDAR_RANGE"]
-        self.sens_lidar_sampling = sens_params["SENS_LIDAR_SAMPLING"]
-        self.sens_spd_sas_blackout_on = sens_params["SENS_SPD_SAS_BLACKOUT_ON"]
-        self.sens_spd_sas_blackout_min = sens_params["SENS_SPD_SAS_BLACKOUT_MIN"]
-        self.sens_spd_sas_blackout_max = sens_params["SENS_SPD_SAS_BLACKOUT_MAX"]
-        self.sens_spd_sas_blackout_interval_min = sens_params["SENS_SPD_SAS_BLACKOUT_INTERVAL_MIN"]
-        self.sens_spd_sas_blackout_interval_max = sens_params["SENS_SPD_SAS_BLACKOUT_INTERVAL_MAX"]
-        self.sens_spd_sas_sampling = sens_params["SENS_SPD_SAS_SAMPLING"]
-        self.sens_spd_sas_error = sens_params["SENS_SPD_SAS_ERROR"]
-        self.label_colors = sens_params["LABEL_COLORS"]
+        # UNPACK DE VARIÁVEIS DO simulation.yaml
+        episodes = sim_params["episodes"]
+        vehicles = sim_params["vehicles"]
+        weather = sim_params["weather"]
+        top_view = sim_params["top_view"]
+        colors = sim_params["colors"]
+
+        self.map = episodes["map"]
+        self.random_maps = episodes["random_maps"]
+        self.centralized_spawn = episodes["centralized_spawn"]
+        self.sensors_blackout = episodes["sensors_blackout"]
+        self.kalman_filter = episodes["kalman_filter"]
+        self.num_episodes = episodes["num_episodes"]
+        self.episode_reset = episodes["episode_reset"]
+        self.reset_interval = episodes["reset_interval"]
+        self.gradual_random_init_ep_change = episodes["gradual_random_init_ep_change"]
+        self.gradual_random_rate = episodes["gradual_random_rate"]
+
+        self.ego_vehicle_num = vehicles["ego_vehicle_num"]
+        self.npc_vehicle_num = vehicles["npc_vehicle_num"]
+        self.static_props_num = vehicles["static_props_num"]
+        self.pedestrian_num = vehicles["pedestrian_num"]
+        self.percentage_pedestrians_running = vehicles["percentage_pedestrians_running"]
+        self.percentage_pedestrians_crossing = vehicles["percentage_pedestrians_crossing"]
+        self.vehicle_agent = vehicles["vehicle_agent"]
+        self.vehicle_behavior = vehicles["vehicle_behavior"]
+        self.vehicle_distance = vehicles["vehicle_distance"]
+        self.vehicle_speed = vehicles["vehicle_speed"]
+        self.num_min_waypoints = vehicles["num_min_waypoints"]
+
+        self.weather_preset = weather["weather_preset"]
+        self.custom_weather = weather["custom_weather"]
+        self.sun_altitude = weather["custom_params"]["sun_altitude"]
+        self.fog_density = weather["custom_params"]["fog_density"]
+        self.fog_distance = weather["custom_params"]["fog_distance"]
+        self.precipitation_value = weather["custom_params"]["precipitation_value"]
+        self.precipitation_deposits = weather["custom_params"]["precipitation_deposits"]
+        self.cloudiness = weather["custom_params"]["cloudiness"]
+
+        self.screen_width = top_view["screen_width"]
+        self.screen_height = top_view["screen_height"]
+        self.top_view_show_hud = top_view["show_hud"]
+        self.top_view_show_id = top_view["show_id"]
+        self.top_view_debug = top_view["debug"]
+        self.config_fps = top_view["fps"]
+
+        self.label_colors = colors["labels"]
+        self.yolo_colors = colors["yolo"]
+
+        self.prediction_preview = train_params["prediction_preview"]
+
+        # UNPACK DE VARIÁVEIS DO sensors.yaml
+        spd_sas = sens_params["spd_sas"]
+        gnss = sens_params["gnss"]
+        imu = sens_params["imu"]
+        collision = sens_params["collision"]
+        obstacle = sens_params["obstacle"]
+        rgb_camera = sens_params["rgb_camera"]
+        lidar = sens_params["lidar"]
+
+        # Speed / Steering angle
+        self.sens_spd_sas = spd_sas["enabled"]
+        self.sens_spd_sas_sampling = spd_sas["sampling"]
+        self.sens_spd_sas_error = spd_sas["error"]
+        self.sens_spd_sas_blackout_on = spd_sas["blackout_on"]
+        self.sens_spd_sas_blackout_min = spd_sas["blackout_min"]
+        self.sens_spd_sas_blackout_max = spd_sas["blackout_max"]
+        self.sens_spd_sas_blackout_interval_min = spd_sas["blackout_interval_min"]
+        self.sens_spd_sas_blackout_interval_max = spd_sas["blackout_interval_max"]
+
+        # GNSS
+        self.sens_gnss = gnss["enabled"]
+        self.sens_gnss_preview = gnss["preview"]
+        self.sens_gnss_sampling = gnss["sampling"]
+        self.sens_gnss_error = gnss["error"]
+        self.sens_gnss_bias = gnss["bias"]
+        self.sens_gnss_blackout_on = gnss["blackout_on"]
+        self.sens_gnss_blackout_min = gnss["blackout_min"]
+        self.sens_gnss_blackout_max = gnss["blackout_max"]
+        self.sens_gnss_blackout_interval_min = gnss["blackout_interval_min"]
+        self.sens_gnss_blackout_interval_max = gnss["blackout_interval_max"]
+
+        # IMU
+        self.sens_imu = imu["enabled"]
+        self.sens_imu_sampling = imu["sampling"]
+        self.sens_imu_accel_error = imu["accel_error"]
+        self.sens_imu_gyro_error = imu["gyro_error"]
+        self.sens_imu_gyro_bias = imu["gyro_bias"]
+        self.sens_imu_blackout_on = imu["blackout_on"]
+        self.sens_imu_blackout_min = imu["blackout_min"]
+        self.sens_imu_blackout_max = imu["blackout_max"]
+        self.sens_imu_blackout_interval_min = imu["blackout_interval_min"]
+        self.sens_imu_blackout_interval_max = imu["blackout_interval_max"]
+
+        # Collision
+        self.sens_col = collision["enabled"]
+
+        # Obstacle
+        self.sens_obs = obstacle["enabled"]
+
+        # RGB
+        self.sens_rgb = rgb_camera["enabled"]
+        self.rgb_mode = rgb_camera["mode"].upper()
+        self.sens_rgb_preview = rgb_camera["preview"]
+        self.sens_rgb_sampling = rgb_camera["sampling"]
+        self.sens_rgb_stack_size = rgb_camera["stack_size"]
+        self.im_width = rgb_camera["image_width"]
+        self.im_height = rgb_camera["image_height"]
+        self.sens_rgb_blackout = rgb_camera["blackout"]
+        self.sens_rgb_blackout_interval = rgb_camera["blackout_interval"]
+
+        # LiDAR
+        self.sens_lidar = lidar["enabled"]
+        self.sens_lidar_preview = lidar["preview"]
+        self.sens_lidar_sampling = lidar["sampling"]
+        self.sens_lidar_range = lidar["range"]
+        self.sens_lidar_num_points = lidar["num_points"]
+        self.sens_lidar_frequency = lidar["frequency"]
+        self.sens_lidar_channels = lidar["channels"]
+        self.sens_lidar_show_factor = lidar["show_factor"]
+        self.sens_lidar_top_view = lidar["top_view"]
+        self.sens_lidar_blackout = lidar["blackout"]
+        self.sens_lidar_blackout_interval = lidar["blackout_interval"]
 
         # INICIANDO AMBIENTE DE SIMULAÇÃO
         self.client = carla.Client("127.0.0.1", 2000)
@@ -1189,9 +1235,9 @@ class SimPause(object):
         #self.traffic_manager.set_synchronous_mode(False)
         #self._SimulationSetup.world.apply_settings(self.settings)
         #self._SimulationSetup.world.tick()
-        speed = sim_params["VEHICLE_SPEED"]
-        behavior = sim_params["VEHICLE_BEHAVIOR"]
-        agent = sim_params["VEHICLE_AGENT"]
+        speed = sim_params["vehicles"]["vehicle_speed"]
+        behavior = sim_params["vehicles"]["vehicle_behavior"]
+        agent = sim_params["vehicles"]["vehicle_agent"]
 
         if agent == "BASIC" and speed == "Limit" and behavior == "randomized":
             for veh in sim.ego_vehicle:
@@ -1215,7 +1261,7 @@ class SimPause(object):
 
 # CONFIGURA A VISÃO SUPERIOR DO MAPA
 class TopView(object):
-    def __init__(self,sim_params):
+    def __init__(self, sim_params, train_params):
         # self.classes  # importa no_rendering_mode.py
         self.input_control = None
         self.hud = None
@@ -1225,12 +1271,13 @@ class TopView(object):
         self.first_start = True
 
         # Unpack variáveis
-        self.screen_width = sim_params["SCREEN_WIDTH"]
-        self.screen_height = sim_params["SCREEN_HEIGHT"]
-        self.top_view_show_hud = sim_params["TOP_VIEW_SHOW_HUD"]
-        self.top_view_show_id = sim_params["TOP_VIEW_SHOW_ID"]
-        self.config_fps = sim_params["CONFIG_FPS"]
-        self.last_positions_training = sim_params["LAST_POSITIONS_TRAINING"]
+        top_view_config = sim_params["top_view"]
+        self.screen_width = top_view_config["screen_width"]
+        self.screen_height = top_view_config["screen_height"]
+        self.top_view_show_hud = top_view_config["show_hud"]
+        self.top_view_show_id = top_view_config["show_id"]
+        self.config_fps = top_view_config["fps"]
+        self.last_positions_training = train_params["last_positions_training"]
 
     # ======== INICIALIZA OS MÓDULOS NECESSÁRIOS PARA CONFIGURAR A VISÃO DE CIMA =========
     def start(self, mapa):

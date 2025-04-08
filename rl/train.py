@@ -16,8 +16,12 @@ from rl.CarlaEnv.carla_env import CarlaEnv
 
 # Converte valor da saída do modelo para valores de localização no Carla
 
-def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
-    # Read parameters
+def train(train_params, sim_params, simulation, top_view):  # start_carla=True
+    train_model      = train_params["model_name"]
+    restart          = train_params["restart"]
+    last_positions_training = train_params["last_positions_training"]
+
+    hyper_params = train_params["hyperparameters"]
     learning_rate    = hyper_params["learning_rate"]
     lr_decay         = hyper_params["lr_decay"]
     discount_factor  = hyper_params["discount_factor"]
@@ -29,30 +33,23 @@ def train(hyper_params, sim_params, simulation, top_view):  # start_carla=True
     horizon          = hyper_params["horizon"]
     num_training     = hyper_params["num_training"]
     num_epochs       = hyper_params["num_epochs"]
-    num_episodes     = sim_params["NUM_EPISODES"]
     batch_size       = hyper_params["batch_size"]
-    #vae_model        = params["vae_model"]
-    #vae_model_type   = params["vae_model_type"]
-    #vae_z_dim        = params["vae_z_dim"]
     synchronous      = hyper_params["synchronous"]
-    fps              = sim_params["CONFIG_FPS"]
     action_smoothing = hyper_params["action_smoothing"]
     model_name       = hyper_params["model_name"]
     reward_fn        = hyper_params["reward_fn"]
     seed             = hyper_params["seed"]
     eval_interval    = hyper_params["eval_interval"]
-    #save_eval_interval=params["save_eval_interval"]
     record_eval      = hyper_params["record_eval"]
-    ego_num          = sim_params["EGO_VEHICLE_NUM"]
     eval_time        = hyper_params["eval_time"]
-    reset            = sim_params["EPISODE_RESET"]
-    vehicle_agent    = sim_params["VEHICLE_AGENT"]
-    restart          = sim_params["TRAIN_RESTART"]
-    # reset_mode       = params["reset_mode"]
-    train_model      = sim_params["TRAIN_MODEL"]
     target_std       = hyper_params["target_std"]
-    map              = sim_params["MAP"]
-    last_positions_training = sim_params["LAST_POSITIONS_TRAINING"]
+
+    map              = sim_params["episodes"]["map"]
+    num_episodes     = sim_params["episodes"]["num_episodes"]
+    fps              = sim_params["top_view"]["fps"]
+    ego_num          = sim_params["vehicles"]["ego_vehicle_num"]
+    reset            = sim_params["episodes"]["episode_reset"]
+    vehicle_agent    = sim_params["vehicles"]["vehicle_agent"]
 
     # Set seeds
     if isinstance(seed, int):

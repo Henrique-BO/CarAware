@@ -1,0 +1,31 @@
+model_name: "PPO"  # Modelo a ser utilizado
+restart: true  # Se true, sobrescreve o modelo criado previamente
+prediction_preview: true  # Desenha a previsão na visão Top-view
+prediction_hud: true  # Insere informações de prediction no HUD
+last_positions_training: false  # Passa as últimas 4 posições para a rede no treinamento
+record_play_stats: false  # Grava no Tensorboard as distâncias prediction e kalman
+
+hyperparameters:
+  learning_rate: 8e-5  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
+  lr_decay: 1.0  # Per-episode exponential learning rate decay - Default: 1.0 (mantêm constante)
+  discount_factor: 0.99  # GAE discount factor
+  gae_lambda: 0.95  # GAE lambda
+  ppo_epsilon: 0.2  # PPO Epsilon - Default: 0.2
+  initial_std: 0.7  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
+  target_std: 0.4  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
+  value_scale: 1.0  # Value loss scale factor
+  entropy_scale: 0.01  # Entropy loss scale factor - Default: 0.01
+  horizon: 1000  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
+  num_training: 1  # Number of times the model will be trained per episode
+  num_epochs: 3  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
+  batch_size: 64  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
+  synchronous: False  # Set this to True when running in a synchronous environment
+  action_smoothing: 0.0  #Action smoothing factor
+  reward_fn: "rw_distance_normalized"  # Reward Function to use. See reward_functions.py for more info.
+  seed: 0  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
+                          # with this option in our experience)
+  eval_interval: 1  # Number of episodes interval between evaluations - Default: 5
+  # save_eval_interval: 10  # Number of evaluations interval for saving (in addition to best rw)
+  eval_time: 40  # Tempo que a simulação irá rodar para avaliação - Default: 60
+  record_eval: True  # If True, save' videos of evaluation episodes to models/model_name/videos/
+  # reset_mode: 5 # Usado em conjunto com restart, define se reinicia sempre ou só target
