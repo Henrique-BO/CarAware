@@ -11,7 +11,9 @@ from rl.CarlaEnv.carla_env import CarlaEnv as CarlaEnv
 
 
 def play(train_params, sim_params, simulation, top_view):  # start_carla=True
-    train_model = train_params["model_name"]
+    model_name = train_params["model_name"]
+    # train_model = train_params["model_name"]
+    train_model = "Latest"
     record_play_stats = train_params["record_play_stats"]
 
     hyper_params = train_params["hyperparameters"]
@@ -29,7 +31,6 @@ def play(train_params, sim_params, simulation, top_view):  # start_carla=True
     batch_size = hyper_params["batch_size"]
     synchronous = hyper_params["synchronous"]
     action_smoothing = hyper_params["action_smoothing"]
-    model_name = hyper_params["model_name"]
     reward_fn = hyper_params["reward_fn"]
     seed = hyper_params["seed"]
     eval_interval = hyper_params["eval_interval"]

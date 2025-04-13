@@ -948,12 +948,12 @@ class SimulationSetup:
             elif self.vehicle_agent == "BEHAVIOR":
                 self.ego_vehicle[veh_num].agent = BehaviorAgent(self.ego_vehicle[veh_num], behavior=self.vehicle_behavior)
                 #spawn_point = random.choice(self.veh_spawn_points)
-                #if spawn_point.location != self.ego_vehicle[veh_num].agent.vehicle.get_location():
+                #if spawn_point.location != self.ego_vehicle[veh_num].agent._vehicle.get_location():
                 #    destination = spawn_point.location
                 #else:
                 #    destination = spawn_point.location
                 #destination = spawn_point.location
-                #self.ego_vehicle[veh_num].agent.set_destination(self.ego_vehicle[veh_num].agent.vehicle.get_location(), destination, clean=True)
+                #self.ego_vehicle[veh_num].agent.set_destination(self.ego_vehicle[veh_num].agent._vehicle.get_location(), destination, clean=True)
                 #self.ego_vehicle[veh_num].agent.set_destination(destination, clean=True)
             elif self.vehicle_agent == "SERVER":
                 self.ego_vehicle[veh_num].set_autopilot(True, self.traffic_manager.get_port())
@@ -977,11 +977,11 @@ class SimulationSetup:
             elif self.vehicle_agent == "BEHAVIOR":
                 self.npc_vehicle[veh_num].agent = BehaviorAgent(self.npc_vehicle[veh_num], behavior=self.vehicle_behavior)
                 spawn_point = random.choice(self.veh_spawn_points)
-                if spawn_point.location != self.npc_vehicle[veh_num].agent.vehicle.get_location():
+                if spawn_point.location != self.npc_vehicle[veh_num].agent._vehicle.get_location():
                     destination = spawn_point.location
                 else:
                     destination = spawn_point.location
-                self.npc_vehicle[veh_num].agent.set_destination(self.npc_vehicle[veh_num].agent.vehicle.get_location(), destination, clean=True)
+                self.npc_vehicle[veh_num].agent.set_destination(self.npc_vehicle[veh_num].agent._vehicle.get_location(), destination)
             elif self.vehicle_agent == "SERVER":
                 self.npc_vehicle[veh_num].set_autopilot(True, self.traffic_manager.get_port())
             else:

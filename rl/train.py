@@ -17,6 +17,7 @@ from rl.CarlaEnv.carla_env import CarlaEnv
 # Converte valor da saída do modelo para valores de localização no Carla
 
 def train(train_params, sim_params, simulation, top_view):  # start_carla=True
+    model_name       = train_params["model_name"]
     train_model      = train_params["model_name"]
     restart          = train_params["restart"]
     last_positions_training = train_params["last_positions_training"]
@@ -36,7 +37,6 @@ def train(train_params, sim_params, simulation, top_view):  # start_carla=True
     batch_size       = hyper_params["batch_size"]
     synchronous      = hyper_params["synchronous"]
     action_smoothing = hyper_params["action_smoothing"]
-    model_name       = hyper_params["model_name"]
     reward_fn        = hyper_params["reward_fn"]
     seed             = hyper_params["seed"]
     eval_interval    = hyper_params["eval_interval"]

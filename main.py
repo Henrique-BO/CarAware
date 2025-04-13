@@ -152,6 +152,8 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
     elif TRAIN_MODE == "Simulation":
         logging.info("Starting simulation mode...")
         sim.simulation_status = "Simulation"
+    else:
+        raise ValueError("Invalid training mode. Use 'Train', 'Play', or 'Simulation'.")
 
     time.sleep(5)
 
@@ -198,7 +200,7 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
             sim.simulation_reset = False
             First_episode = False
 
-        if TRAIN_MODE == "PLAY":
+        if TRAIN_MODE == "Play":
             top_view.tick([], sim.ego_vehicle)  # atualiza a exibição do top-view
             trainer_thread.start()
 
@@ -227,6 +229,7 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
                 sim.simulation_status == "Simulation"):
             time.sleep(0.01)
 
+        logging.info("Simulation started.")
         # while time.time() <= ep_start_time + EPISODE_TIME:
         while sim.simulation_status == "Training" or sim.simulation_status == "Play" or \
                 sim.simulation_status == "Simulation":
@@ -329,7 +332,7 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
                     control.manual_gear_shift = False
                     veh.apply_control(control)
                 elif VEHICLE_AGENT == "BEHAVIOR":
-                    veh.agent.update_information()
+                    veh.agent._update_information()
                     if len(veh.agent.get_local_planner().waypoints_queue) < NUM_MIN_WAYPOINTS:
                         veh.agent.reroute(sim.veh_spawn_points)
                     speed_limit = veh.get_speed_limit()
@@ -379,7 +382,16 @@ if __name__ == '__main__':
     SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS = load_config(args.simulation, args.sensors, args.training)
     SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS = apply_overrides(SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS, args.override)
 
+    if args.command == "simulation":
+        TRAIN_MODE = "Simulation"
+    elif args.command == "train":
+        TRAIN_MODE = "Train"
+    elif args.command == "play":
+        TRAIN_MODE = "Play"
+    else:
+        raise ValueError("Invalid command. Use 'simulation', 'train', or 'play'.")
+
     logging.info("Program started.")
-    result = main(args.command, SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS)
+    result = main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, HYPER_PARAMS)
     logging.info(f"Program finished with result: {result}")
     print(result)
