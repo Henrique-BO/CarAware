@@ -142,7 +142,7 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
 
     if TRAIN_MODE == "Train":  # inicializa thread p/ treinamento RL
         logging.info("Starting training mode...")
-        trainer_thread = Thread(target=train_RL.train, args=(TRAIN_PARAMS, SIM_PARAMS, sim, top_view), daemon=True)
+        trainer_thread = Thread(target=train_RL.train, args=(TRAIN_PARAMS, SIM_PARAMS, SENS_PARAMS, sim, top_view), daemon=True)
         trainer_thread.start()
     elif TRAIN_MODE == "Play":  # inicializa thread p/ preview de modelo treinado RL
         logging.info("Starting play mode...")
