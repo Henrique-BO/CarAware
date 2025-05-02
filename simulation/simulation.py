@@ -928,7 +928,7 @@ class SimulationSetup:
             bp_vehicle.set_attribute('driver_id', driver_id)
 
         if spawn_ego:  # CRIA CARRO COMO EGO
-            bp_vehicle.set_attribute('role_name', 'EGO ' + str(veh_num + 1))  # EGO 1, EGO 2
+            bp_vehicle.set_attribute('role_name', 'EGO_' + str(veh_num + 1))
             # spawn the cars and set their autopilot
             self.ego_vehicle.append(self.world.spawn_actor(bp_vehicle, transform))
             self.world.wait_for_tick()
@@ -962,7 +962,7 @@ class SimulationSetup:
                 pass  # veículos parados
 
         else:  # CRIA CARRO COMO NPC
-            bp_vehicle.set_attribute('role_name', 'NPC ' + str(veh_num + 1))  # EGO 1, EGO 2
+            bp_vehicle.set_attribute('role_name', 'NPC_' + str(veh_num + 1))
             # spawn the cars and set their autopilot
             self.npc_vehicle.append(self.world.spawn_actor(bp_vehicle, transform))
             self.world.wait_for_tick()
@@ -1134,7 +1134,7 @@ class SimulationSetup:
         waypoint = map.get_waypoint(transform.location, project_to_road=True,
                                       lane_type=(carla.LaneType.Sidewalk))
 
-        bp_props.set_attribute('role_name', 'PROP ' + str(props_num + 1))  # EGO 1, EGO 2
+        bp_props.set_attribute('role_name', 'PROP_' + str(props_num + 1))
         #bp_props.set_attribute('semantic_tags', 3)
         self.static_props.append(self.world.spawn_actor(bp_props, waypoint.transform))
         self.world.wait_for_tick()

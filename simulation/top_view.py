@@ -322,7 +322,7 @@ class HUD(object):
                     color = COLOR_CHOCOLATE_0
                 for veh in all_veh:
                     if actor[0].id == veh.id:
-                        veh_name = str(veh.attributes["role_name"]).split()[1]
+                        veh_name = str(veh.attributes["role_name"]).split('_')[1]
                         break
                     else:
                         veh_name = ""
