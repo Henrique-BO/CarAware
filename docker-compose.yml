@@ -1,6 +1,6 @@
 services:
   carla:
-    image: carlasim/carla:0.9.13
+    image: carlasim/carla:$CARLA_VERSION
     runtime: nvidia
     privileged: true
     stdin_open: true
@@ -23,13 +23,13 @@ services:
     build:
       context: docker/tf
       dockerfile: Dockerfile
-    image: hbarros1/caraware-tf:1.1.0
+    image: hbarros1/caraware-tf:$CARAWARE_VERSION
     # runtime: nvidia
     privileged: true
     network_mode: "host"
     environment:
       - CARLA_ROOT=/home/carla
-      - PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg
+      - PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-$CARLA_VERSION-py3.7-linux-x86_64.egg
       - DISPLAY=${DISPLAY}
       - XAUTHORITY=/root/.Xauthority
       - QT_X11_NO_MITSHM=1 # Fix a bug with QT
@@ -53,26 +53,22 @@ services:
     build:
       context: docker/ros
       dockerfile: Dockerfile
-    image: hbarros1/caraware-ros:1.0.0
-    runtime: nvidia
-    privileged: true
+    image: hbarros1/caraware-ros:$CARAWARE_VERSION
     network_mode: "host"
     working_dir: /root/carla_ws
     environment:
       - DISPLAY=${DISPLAY}
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=all
       - QT_X11_NO_MITSHM=1 # Fix a bug with QT
       - SDL_VIDEODRIVER=
       - CARLA_ROOT=/home/carla
-      - PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg:/home/carla/PythonAPI/carla
+      - PYTHONPATH=/home/carla/PythonAPI/carla/dist/carla-$CARLA_VERSION-py3.7-linux-x86_64.egg:/home/carla/PythonAPI/carla
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority:rw
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ./src/CarAware/asound.conf:/etc/asound.conf
       - ${HOME}/carla_ws:/root/carla_ws
       - carla-data:/home/carla
-    command: tail -F /dev/null
+    command: ["bash", "-c", "source /opt/ros/$ROS_DISTRO/setup.bash && source /root/carla_ws/install/setup.bash && ros2 launch carla_ros_bridge carla_ros_bridge.launch.py carla_host:=localhost carla_port:=2000 carla_timeout:=10 passive:=True register_all_sensors:=True"]
 
 volumes:
   carla-data:

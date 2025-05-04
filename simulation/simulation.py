@@ -809,6 +809,14 @@ class SimulationSetup:
                     self.sensors_blackout_interval_spd_sas = time.time()
                     #print("Blackout OFF")
 
+    def spawn_speed_sas_sensor(self, ego_vehicle):
+        """
+        Spawn a dummy actor for the Speed_SAS_Sensor
+        """
+        blueprint = self.world.get_blueprint_library().find('sensor.other.lane_invasion')
+        transform = carla.Transform(carla.Location(x=0, y=0, z=2))  # Adjust location as needed
+        dummy_actor = self.world.spawn_actor(blueprint, transform, attach_to=ego_vehicle)
+        return dummy_actor
 
     # ===== CARREGA OS PEDESTRES NA SIMULAÇÃO =====
     def spawn_pedestrians(self):  # PENSAR EM COMO FAZER ESSA FUNÇÃO DAR SPAWN APENAS DE UM PEDESTRE
@@ -1023,6 +1031,8 @@ class SimulationSetup:
             # CONFIGURAÇÃO DO SPEED / STEERING ANGLE SENSOR (SPD_SAS) - CUSTOM SENSOR
             if self.sens_spd_sas:
                 self.ego_vehicle[veh_num].sens_spd_sas = Speed_SAS_Sensor(self.sens_spd_sas_sampling, self.speed_sas_callback, veh_num)
+                spd_sas = self.spawn_speed_sas_sensor(self.ego_vehicle[veh_num])
+                self.all_sensors.append(spd_sas)
 
             # CONFIGURAÇÃO DO GNSS
             if self.sens_gnss:
