@@ -11,7 +11,7 @@ spd_sas: # Funciona apenas com carro em movimento
 
 # GLOBAL NAVIGATION SATELLITE SYSTEM (GNSS)
 gnss:
-  enabled: false
+  enabled: true
   preview: true  # Define se os pontos detectados serão desenhados na tela
   sampling: 0.1  # Tempo em segundos entre cada aquisição - Default: 0.1 / Real: 1
   error: 0.00005  # Default: Low = 0.00001 / High = 0.0001

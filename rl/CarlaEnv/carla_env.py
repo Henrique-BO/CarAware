@@ -109,8 +109,13 @@ class CarlaEnv(gym.Env):
         if not last_positions_training:
             # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            # obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+            # obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+            # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
+            # accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
+            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 
             # Configura vetor unitário de entrada dos espaços de observação e ação - SMALL
             # GNSS_X, GNSS_Y, compass, speed, stw_angle
@@ -225,7 +230,8 @@ class CarlaEnv(gym.Env):
         initial_reward = 0
         #initial_state = [0, 0, 0, 0, 0]  # Small
         if not self.last_positions_training:
-            initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            # initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         else:  # Treinando com últimas posições
             initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         #state_lst = []
@@ -308,7 +314,12 @@ class CarlaEnv(gym.Env):
             if veh.sens_gnss_input is not None:
                 if not self.last_positions_training:
                     #COMPLETO
-                    observation.append([veh.sens_gnss_input.x, veh.sens_gnss_input.y, veh.sens_imu.ue_accelerometer[0],
+                    # observation.append([veh.sens_gnss_input.x, veh.sens_gnss_input.y, veh.sens_imu.ue_accelerometer[0],
+                    #                     veh.sens_imu.ue_accelerometer[1], veh.sens_imu.ue_accelerometer[2],
+                    #                     veh.sens_imu.ue_gyroscope[0], veh.sens_imu.ue_gyroscope[1],
+                    #                     veh.sens_imu.ue_gyroscope[2], veh.sens_imu.ue_compass_degrees,
+                    #                     veh.sens_spd_sas_speed, veh.sens_spd_sas_angle])
+                    observation.append([veh.sens_imu.ue_accelerometer[0],
                                         veh.sens_imu.ue_accelerometer[1], veh.sens_imu.ue_accelerometer[2],
                                         veh.sens_imu.ue_gyroscope[0], veh.sens_imu.ue_gyroscope[1],
                                         veh.sens_imu.ue_gyroscope[2], veh.sens_imu.ue_compass_degrees,
@@ -335,7 +346,8 @@ class CarlaEnv(gym.Env):
 
             else:
                 if not self.last_positions_training:
-                    observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
+                    # observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
+                    observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
                     #observation.append([[0, 0, 0, 0, 0]])  # SMALL
                 else:
                     observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO

@@ -65,10 +65,10 @@ services:
     volumes:
       - ${HOME}/.Xauthority:/root/.Xauthority:rw
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./src/CarAware/asound.conf:/etc/asound.conf
+      - ./asound.conf:/etc/asound.conf
       - ${HOME}/carla_ws:/root/carla_ws
       - carla-data:/home/carla
-    command: ["bash", "-c", "source /opt/ros/$ROS_DISTRO/setup.bash && source /root/carla_ws/install/setup.bash && ros2 launch carla_ros_bridge carla_ros_bridge.launch.py carla_host:=localhost carla_port:=2000 carla_timeout:=10 passive:=True register_all_sensors:=True"]
+    command: ["bash", "-c", "source /opt/ros/$ROS_DISTRO/setup.bash && source /root/carla_ws/install/setup.bash && ros2 launch carla_ros_bridge carla_ros_bridge.launch.py carla_host:=localhost carla_port:=2000 timeout:=10 passive:=True register_all_sensors:=True"]
 
 volumes:
   carla-data:

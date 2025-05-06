@@ -809,15 +809,6 @@ class SimulationSetup:
                     self.sensors_blackout_interval_spd_sas = time.time()
                     #print("Blackout OFF")
 
-    def spawn_speed_sas_sensor(self, ego_vehicle):
-        """
-        Spawn a dummy actor for the Speed_SAS_Sensor
-        """
-        blueprint = self.world.get_blueprint_library().find('sensor.other.lane_invasion')
-        transform = carla.Transform(carla.Location(x=0, y=0, z=2))  # Adjust location as needed
-        dummy_actor = self.world.spawn_actor(blueprint, transform, attach_to=ego_vehicle)
-        return dummy_actor
-
     # ===== CARREGA OS PEDESTRES NA SIMULAÇÃO =====
     def spawn_pedestrians(self):  # PENSAR EM COMO FAZER ESSA FUNÇÃO DAR SPAWN APENAS DE UM PEDESTRE
         logging.info("Spawning pedestrians...")
@@ -1031,7 +1022,11 @@ class SimulationSetup:
             # CONFIGURAÇÃO DO SPEED / STEERING ANGLE SENSOR (SPD_SAS) - CUSTOM SENSOR
             if self.sens_spd_sas:
                 self.ego_vehicle[veh_num].sens_spd_sas = Speed_SAS_Sensor(self.sens_spd_sas_sampling, self.speed_sas_callback, veh_num)
-                spd_sas = self.spawn_speed_sas_sensor(self.ego_vehicle[veh_num])
+                blueprint = self.world.get_blueprint_library().find('sensor.other.lane_invasion')
+                blueprint.set_attribute("role_name", "Speed_SAS")
+                transform = carla.Transform(carla.Location(x=0, y=0, z=0))  # Adjust location as needed
+                spd_sas = self.world.spawn_actor(blueprint, transform, attach_to=self.ego_vehicle[veh_num],
+                                                 attachment_type=carla.AttachmentType.Rigid)
                 self.all_sensors.append(spd_sas)
 
             # CONFIGURAÇÃO DO GNSS
@@ -1040,6 +1035,7 @@ class SimulationSetup:
                 gnss_location = carla.Location(0, 0, 0)
                 gnss_rotation = carla.Rotation(0, 0, 0)
                 gnss_transform = carla.Transform(gnss_location, gnss_rotation)
+                gnss_bp.set_attribute("role_name", "GPS")
                 gnss_bp.set_attribute("sensor_tick", str(self.sens_gnss_sampling))  # Default 3s
                 gnss_bp.set_attribute("noise_lat_stddev", str(self.sens_gnss_error))
                 gnss_bp.set_attribute("noise_lon_stddev", str(self.sens_gnss_error))
@@ -1056,6 +1052,7 @@ class SimulationSetup:
                 imu_location = carla.Location(0, 0, 0)
                 imu_rotation = carla.Rotation(0, 0, 0)
                 imu_transform = carla.Transform(imu_location, imu_rotation)
+                imu_bp.set_attribute("role_name", "IMU")
                 # imu_bp.set_attribute("noise_accel_stddev_x", str(self.sens_imu_accel_error))
                 # imu_bp.set_attribute("noise_accel_stddev_y", str(self.sens_imu_accel_error))
                 # imu_bp.set_attribute("noise_gyro_stddev_x", str(self.sens_imu_gyro_error))

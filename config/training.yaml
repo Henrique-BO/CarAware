@@ -1,4 +1,4 @@
-model_name: "PPO_4"  # Modelo a ser utilizado
+model_name: "PPO_5"  # Modelo a ser utilizado
 restart: true  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
