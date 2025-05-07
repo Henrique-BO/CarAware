@@ -22,7 +22,7 @@ services:
   tf:
     build:
       context: docker/tf
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.jetson
     image: hbarros1/caraware-tf:$CARAWARE_VERSION
     # runtime: nvidia
     privileged: true

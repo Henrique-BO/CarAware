@@ -1,0 +1,32 @@
+# Use the official TensorFlow 1.15 GPU image
+FROM nvcr.io/nvidia/l4t-tensorflow:r35.1.0-tf1.15-py3
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV TERM=xterm-color
+
+# Install necessary dependencies
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    curl \
+    ca-certificates \
+    git \
+    build-essential \
+    wget \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    mesa-utils \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+COPY requirements.jetson.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt
+
+WORKDIR /app
+
+CMD ["/bin/bash"]

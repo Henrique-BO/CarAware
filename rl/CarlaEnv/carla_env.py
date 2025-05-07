@@ -4,10 +4,8 @@ import gym
 from gym.utils import seeding
 import reward_functions as reward_functions
 import math
+import numpy as np
 
-# from hud import HUD
-#from planner import RoadOption, compute_route_waypoints
-from wrappers import *
 
 # TODO:
 # - Some solution to avoid using the same env instance for training and eval
