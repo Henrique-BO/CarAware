@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>caraware_ros</name>
+    <version>0.1.0</version>
+    <description>Launch files for sim-test mode combining CARLA ROS bridge and model node.</description>
+
+    <maintainer email="henrique.barrosoliveira@usp.br">Henrique Barros Oliveira</maintainer>
+    <license>MIT</license>
+
+    <buildtool_depend>ament_python</buildtool_depend>
+
+    <!-- Run dependencies -->
+    <exec_depend>rclpy</exec_depend>
+    <exec_depend>launch</exec_depend>
+    <exec_depend>launch_ros</exec_depend>
+    <exec_depend>carla_ros_bridge</exec_depend>
+
+    <!-- For scripts or launch files -->
+    <export>
+        <build_type>ament_python</build_type>
+    </export>
+</package>

@@ -22,9 +22,8 @@ services:
   tf:
     build:
       context: docker/tf
-      dockerfile: Dockerfile.jetson
+      dockerfile: Dockerfile
     image: hbarros1/caraware-tf:$CARAWARE_VERSION
-    # runtime: nvidia
     privileged: true
     network_mode: "host"
     environment:
@@ -34,8 +33,6 @@ services:
       - XAUTHORITY=/root/.Xauthority
       - QT_X11_NO_MITSHM=1 # Fix a bug with QT
       - SDL_VIDEODRIVER=x11
-      # - NVIDIA_VISIBLE_DEVICES=all
-      # - NVIDIA_DRIVER_CAPABILITIES=all
     working_dir: /app
     user: 1000:1000
     volumes:
@@ -68,7 +65,7 @@ services:
       - ./asound.conf:/etc/asound.conf
       - ${HOME}/carla_ws:/root/carla_ws
       - carla-data:/home/carla
-    command: ["bash", "-c", "source /opt/ros/$ROS_DISTRO/setup.bash && source /root/carla_ws/install/setup.bash && ros2 launch carla_ros_bridge carla_ros_bridge.launch.py carla_host:=localhost carla_port:=2000 timeout:=10 passive:=True register_all_sensors:=True"]
+    command: tail -F /dev/null
 
 volumes:
   carla-data:

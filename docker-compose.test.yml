@@ -1,0 +1,15 @@
+services:
+  tf:
+    depends_on:
+      - carla
+    command: [
+      "/app/entrypoint_tf.sh",
+      "--wait-for-carla",
+      "--run-main", "simulation",
+      "--run-model-server", $MODEL_NAME
+    ]
+
+  ros:
+    depends_on:
+      - carla
+    command: ["/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh"]

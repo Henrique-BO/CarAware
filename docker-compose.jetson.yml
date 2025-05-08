@@ -1,0 +1,14 @@
+services:
+  carla: !reset null
+
+  tf:
+    build:
+      context: docker/tf
+      dockerfile: Dockerfile.jetson
+    image: hbarros1/caraware-tf:$CARAWARE_VERSION
+    command: [
+      "/app/entrypoint_tf.sh",
+      "--run-model-server", $MODEL_NAME
+    ]
+
+  ros: !reset null

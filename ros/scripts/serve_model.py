@@ -5,7 +5,7 @@ import sys
 import json
 import numpy as np
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from rl.ppo import PPO
 from rl.CarlaEnv.carla_env import CarlaEnv
 

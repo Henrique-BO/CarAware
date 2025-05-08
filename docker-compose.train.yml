@@ -1,0 +1,11 @@
+services:
+  tf:
+    depends_on:
+      - carla
+    command: [
+      "/app/entrypoint_tf.sh",
+      "--wait-for-carla",
+      "--run-main", "train"
+    ]
+
+  ros: !reset null

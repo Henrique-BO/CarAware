@@ -4,6 +4,7 @@ import json
 import numpy as np
 import rclpy
 import transforms3d
+import time
 
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
@@ -41,14 +42,17 @@ class ModelNode(Node):
         """
         Establish a connection to the model server.
         """
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((self.server_host, self.server_port))
-            self.get_logger().info('Connected to model server.')
-            return sock
-        except Exception as e:
-            self.get_logger().error(f'Failed to connect to server: {e}')
-            self.destroy_node()
+        attempt = 0
+        while True:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((self.server_host, self.server_port))
+                self.get_logger().info('Connected to model server.')
+                return sock
+            except Exception as e:
+                self.get_logger().error(f'Failed attempt {attempt} to connect to server: {e}')
+                attempt += 1
+                time.sleep(1)
 
     def imu_callback(self, msg):
         """
