@@ -11,7 +11,8 @@ from sensor_msgs.msg import Imu
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PointStamped
 
-IMU_TOPIC = "/carla/EGO_1/IMU"
+# IMU_TOPIC = "/carla/EGO_1/IMU"
+IMU_TOPIC = "/imu/data"
 ACKERMANN_TOPIC = "/carla/EGO_1/Speed_SAS"
 
 class ModelNode(Node):
@@ -60,8 +61,6 @@ class ModelNode(Node):
         """
         roll, pitch, yaw = transforms3d.euler.quat2euler([msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z])
         yaw = np.rad2deg(yaw)
-        if abs(roll) > 0.1 or abs(pitch) > 0.1:
-            print(f"roll: {roll}, pitch: {pitch}, yaw: {yaw}")
         self.imu_data = {
             'linear_acceleration': [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z],
             'angular_velocity': [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z],

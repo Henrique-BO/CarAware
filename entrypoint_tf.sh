@@ -38,10 +38,21 @@ fi
 
 if $RUN_MODEL_SERVER; then
     echo "[TF Entrypoint] Launching model server with model: $MODEL_PATH"
-    python3 ros/scripts/serve_model.py --model "$MODEL_PATH" &
+    python3 ros/caraware_ros/serve_model.py --model "$MODEL_PATH" 2>&1 | sed 's/^/[Model Server] /' &
+    MODEL_SERVER_PID=$!
 fi
 
 if $RUN_MAIN; then
     echo "[TF Entrypoint] Running main.py in mode: $MAIN_MODE"
-    python3 main.py "$MAIN_MODE"
+    python3 main.py "$MAIN_MODE" 2>&1 | sed 's/^/[CarAware] /' &
+    MAIN_PID=$!
+fi
+
+# Wait for background processes to finish
+if $RUN_MODEL_SERVER; then
+    wait $MODEL_SERVER_PID
+fi
+
+if $RUN_MAIN; then
+    wait $MAIN_PID
 fi
