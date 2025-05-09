@@ -9,4 +9,6 @@ jetson:
 
 build:
 	docker compose -f docker-compose.yml build
+
+build-jetson:
 	docker compose -f docker-compose.jetson.yml build
