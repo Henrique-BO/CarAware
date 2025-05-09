@@ -12,8 +12,9 @@ from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PointStamped
 
 # IMU_TOPIC = "/carla/EGO_1/IMU"
+# ACKERMANN_TOPIC = "/carla/EGO_1/Speed_SAS"
 IMU_TOPIC = "/imu/data"
-ACKERMANN_TOPIC = "/carla/EGO_1/Speed_SAS"
+ACKERMANN_TOPIC = "/ackermann_drive"
 
 class ModelNode(Node):
     def __init__(self):
@@ -85,13 +86,9 @@ class ModelNode(Node):
         if self.imu_data is None or self.ack_data is None:
             return
 
-        # TODO remove GPS
-        # self.gps_data = [0.0, 0.0, 0.0]  # Placeholder for GPS data
-
         # Prepare input data for the model
         input_data = {
             'state': [
-                # *self.gps_data,
                 *self.imu_data['linear_acceleration'],
                 *self.imu_data['angular_velocity'],
                 self.imu_data['yaw'],

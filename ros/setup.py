@@ -22,7 +22,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'model_node = caraware_ros.model_node:main',  # Optional if you have Python nodes
+            'model_node = caraware_ros.model_node:main',
+            'vesc_to_ackermann = caraware_ros.vesc_to_ackermann:main',
         ],
     },
 )
