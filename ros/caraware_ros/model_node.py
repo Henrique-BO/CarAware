@@ -9,23 +9,29 @@ import time
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PointStamped
-
-# IMU_TOPIC = "/carla/EGO_1/IMU"
-# ACKERMANN_TOPIC = "/carla/EGO_1/Speed_SAS"
-IMU_TOPIC = "/imu/data"
-ACKERMANN_TOPIC = "/ackermann_drive"
+from geometry_msgs.msg import PoseStamped, PointStamped
 
 class ModelNode(Node):
     def __init__(self):
         super().__init__('model_node')
 
-        # ROS 2 subscriptions
-        self.subscription_imu = self.create_subscription(Imu, IMU_TOPIC, self.imu_callback, 10)
-        self.subscription_ack = self.create_subscription(AckermannDriveStamped, ACKERMANN_TOPIC, self.ack_callback, 10)
+        # Declare ROS 2 parameters
+        self.declare_parameter('imu_topic', '/imu/data')
+        self.declare_parameter('ackermann_topic', '/ackermann_drive')
+        self.declare_parameter('publish_rate', 50.0)
 
-        # ROS 2 publisher
-        self.publisher_ = self.create_publisher(PointStamped, '/vehicle_position', 10)
+        # Retrieve parameter values
+        imu_topic = self.get_parameter('imu_topic').get_parameter_value().string_value
+        ackermann_topic = self.get_parameter('ackermann_topic').get_parameter_value().string_value
+        publish_rate = self.get_parameter('publish_rate').get_parameter_value().double_value
+
+        # ROS 2 subscriptions
+        self.subscription_imu = self.create_subscription(Imu, imu_topic, self.imu_callback, 10)
+        self.subscription_ack = self.create_subscription(AckermannDriveStamped, ackermann_topic, self.ack_callback, 10)
+
+        # ROS 2 publishers
+        self.pose_pub_ = self.create_publisher(PoseStamped, 'vehicle_pose', 10)
+        self.position_pub_ = self.create_publisher(PointStamped, 'vehicle_position', 10)
 
         # Data storage
         self.imu_data = None
@@ -67,7 +73,6 @@ class ModelNode(Node):
             'angular_velocity': [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z],
             'yaw': yaw,
         }
-        # self.process_data()
 
     def ack_callback(self, msg):
         """
@@ -77,7 +82,6 @@ class ModelNode(Node):
             'speed': msg.drive.speed,
             'steering_angle': msg.drive.steering_angle
         }
-        # self.process_data()
 
     def process_data(self):
         """
@@ -105,12 +109,18 @@ class ModelNode(Node):
             response = self.socket.recv(1024).decode('utf-8')
             prediction = json.loads(response)
 
-            # Publish the prediction as a PointStamped message
-            position = PointStamped()
-            position.header.stamp = self.get_clock().now().to_msg()
-            position.header.frame_id = 'map'
-            position.point.x, position.point.y = prediction['action']
-            self.publisher_.publish(position)
+            # Publish the prediction
+            pose_msg = PoseStamped()
+            pose_msg.header.stamp = self.get_clock().now().to_msg()
+            pose_msg.header.frame_id = 'map'
+            pose_msg.pose.position.x, pose_msg.pose.position.y = prediction['action']
+            pose_msg.pose.position.z = 0.0
+            self.pose_pub_.publish(pose_msg)
+
+            position_msg = PointStamped()
+            position_msg.header = pose_msg.header
+            position_msg.point = pose_msg.pose.position
+            self.position_pub_.publish(position_msg)
         except Exception as e:
             self.get_logger().error(f'Error during communication with server: {e}')
 

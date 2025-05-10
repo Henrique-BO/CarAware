@@ -26,7 +26,15 @@ def generate_launch_description():
         package='caraware_ros',
         executable='model_node',
         name='model_node',
-        output='screen'
+        output='screen',
+        parameters=[
+            {'imu_topic': '/carla/EGO_1/IMU'},
+            {'ackermann_topic': '/carla/EGO_1/Speed_SAS'},
+            {'publish_rate': 50.0}
+        ],
+        remappings=[
+            ('vehicle_pose', '/model/vehicle_pose')
+        ]
     )
 
     return LaunchDescription([
