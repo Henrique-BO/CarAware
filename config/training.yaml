@@ -1,4 +1,4 @@
-model_name: "PPO_7"  # Modelo a ser utilizado
+model_name: "PPO_LSTM_1"  # Modelo a ser utilizado
 restart: true  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
@@ -6,6 +6,7 @@ last_positions_training: false  # Passa as últimas 4 posições para a rede no 
 record_play_stats: false  # Grava no Tensorboard as distâncias prediction e kalman
 
 hyperparameters:
+  sequence_length: 4  # Number of frames to use for the LSTM
   learning_rate: 8.0e-5  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
   lr_decay: 1.0  # Per-episode exponential learning rate decay - Default: 1.0 (mantêm constante)
   discount_factor: 0.99  # GAE discount factor

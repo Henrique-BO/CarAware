@@ -10,7 +10,7 @@ from datetime import datetime
 import mlflow
 import mlflow.tensorflow
 
-from rl.ppo import PPO
+from rl.ppo import PPO, ObservationBuffer
 from rl.run_eval import run_eval
 from rl.utils import compute_gae
 from rl.CarlaEnv.carla_env import CarlaEnv
@@ -30,6 +30,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
     last_positions_training = train_params["last_positions_training"]
 
     hyper_params = train_params["hyperparameters"]
+    sequence_length = hyper_params["sequence_length"]
     learning_rate    = hyper_params["learning_rate"]
     lr_decay         = hyper_params["lr_decay"]
     discount_factor  = hyper_params["discount_factor"]
@@ -114,7 +115,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
         best_eval_reward = -float("inf")
 
         # Environment constants
-        input_shape = env.observation_space.shape[0]
+        num_inputs = env.observation_space.shape[0]
         num_actions = env.action_space.shape[0]
 
         #input_shape = env.observation_space["GNSS"].shape[0] + 1  # input_shape = np.array([vae.z_dim + len(measurements_to_include)])
@@ -122,24 +123,23 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
 
         # Create model
         print("Creating model")
-        model = PPO(input_shape, env.action_space,
+        model = PPO(num_inputs, sequence_length, env.action_space,
                     learning_rate=learning_rate, lr_decay=lr_decay,
                     epsilon=ppo_epsilon, initial_std=initial_std,
                     value_scale=value_scale, entropy_scale=entropy_scale,
                     model_dir=os.path.join("models", model_name))
         print("Model created")
 
-        """ # Prompt to load existing model if any
-        if not restart:
-            if os.path.isdir(model.log_dir) and len(os.listdir(model.log_dir)) > 0:
-                answer = input("Model \"{}\" already exists. Do you wish to continue (C) or restart training (R)? ".format(model_name))
-                if answer.upper() == "C":
-                    pass
-                elif answer.upper() == "R":
-                    restart = True
-                else:
-                    raise Exception("There are already log files for model \"{}\". Please delete it or change model_name and try again".format(model_name))
-        """
+        # Prompt to load existing model if any
+        # if not restart:
+        #     if os.path.isdir(model.log_dir) and len(os.listdir(model.log_dir)) > 0:
+        #         answer = input("Model \"{}\" already exists. Do you wish to continue (C) or restart training (R)? ".format(model_name))
+        #         if answer.upper() == "C":
+        #             pass
+        #         elif answer.upper() == "R":
+        #             restart = True
+        #         else:
+        #             raise Exception("There are already log files for model \"{}\". Please delete it or change model_name and try again".format(model_name))
 
         if restart:
             shutil.rmtree(model.model_dir)
@@ -288,6 +288,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 simulation.eval = False
             # Reset environment
             state, terminal_state, total_reward = env.reset()
+            buffer = ObservationBuffer(num_inputs, sequence_length)
+            buffer.append(state)
 
             # While episode not done
             print(f"Training Episode {simulation.episodio_atual} (Step {model.get_train_step_idx()})")
@@ -297,7 +299,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 episode_idx = model.get_episode_idx()+1
                 First_Episode = False  # variável usado para evitar gravação de modelo à toa
                 simulation.training_atual = idx_training
-                states, taken_actions, values, rewards, dones = [], [], [], [], []
+                state_sequences, taken_actions, values, rewards, dones = [], [], [], [], []
                 current_veh = 0
                 #if ego_num == 1:
                 #    single_veh = 10
@@ -305,10 +307,16 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 #else:
                 #    single_veh = 10
                 for idx_horizon in range(horizon):
+                    if len(buffer) < sequence_length:
+                        state, _, _ = env.step(np.zeros(num_actions), simulation.ego_vehicle[current_veh], current_veh)
+                        buffer.append(state)
+                        continue
+
                     simulation.horizonte_atual = idx_horizon
                     #action_lst, value_lst = [], []
                     #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
-                    action, value = model.predict(state, write_to_summary=True)
+                    state_sequence = buffer.get_sequence()
+                    action, value = model.predict(state_sequence, write_to_summary=True)
 
                     # Perform action
                     #new_state_lst, reward_lst, terminal_state_lst = [], [], []
@@ -326,12 +334,13 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #for state1, action1, value1,reward1,terminal_state1,new_state1 in zip(state_lst, action_lst, value_lst,
                     #                                                                reward_lst, terminal_state_lst,
                     #                                                                new_state_lst):
-                    states.append(state)         # [T, *input_shape]
+                    state_sequences.append(state_sequence) # [T, sequence_length, *input_shape]
                     taken_actions.append(action) # [T,  num_actions]
                     values.append(value)         # [T]
                     rewards.append(reward)       # [T]
                     dones.append(terminal_state) # [T]
                     state = new_state
+                    buffer.append(new_state)
 
                     #idx = 0
                     #if len(states) == horizon: # adiciona na lista apenas o número de horizons definido
@@ -359,7 +368,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     break
 
                 # Calculate last value (bootstrap value)
-                _, last_values = model.predict(state)  # usa último estado gerado pelo último carro
+                state_sequence = buffer.get_sequence()
+                _, last_values = model.predict(state_sequence)  # usa último estado gerado pelo último carro
                 #print("last_values: ", last_values)
                 #print("state: ", state)
                 #print("values_ant: ", values)
@@ -370,10 +380,10 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
                 # Flatten arrays
-                states        = np.array(states)
-                taken_actions = np.array(taken_actions)
-                returns       = np.array(returns)
-                advantages    = np.array(advantages)
+                state_sequences = np.array(state_sequences)
+                taken_actions   = np.array(taken_actions)
+                returns         = np.array(returns)
+                advantages      = np.array(advantages)
 
                 T = len(rewards)
                 #print("T: ", T)
@@ -384,7 +394,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 #print("num actions: ", num_actions)
                 #print("taken actions: ", taken_actions)
 
-                assert states.shape == (T, input_shape)  # assert states.shape == (T, *input_shape)
+                assert state_sequences.shape == (T, sequence_length, num_inputs)  # assert states.shape == (T, *input_shape)
                 assert taken_actions.shape == (T, num_actions)
                 assert returns.shape == (T,)
                 assert advantages.shape == (T,)
@@ -392,9 +402,10 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 # Train for some number of epochs
                 model.update_old_policy() # θ_old <- θ
                 for _ in range(num_epochs):
-                    num_samples = len(states)
+                    num_samples = len(state_sequences)
                     indices = np.arange(num_samples)
                     np.random.shuffle(indices)
+
                     for i in range(int(np.ceil(num_samples / batch_size))):
                         # Sample mini-batch randomly
                         begin = i * batch_size
@@ -404,7 +415,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                         mb_idx = indices[begin:end]
 
                         # Optimize network
-                        model.train(states[mb_idx], taken_actions[mb_idx],
+                        model.train(state_sequences[mb_idx], taken_actions[mb_idx],
                                     returns[mb_idx], advantages[mb_idx])
 
                 # Write episodic values
@@ -421,9 +432,9 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     csv_writer.writerow([str(simulation.episodio_atual), datetime.date(datetime.now()),
                                         datetime.now().strftime("%H:%M:%S"), simulation.sim_total_time, "Episode", 999, 999])
 
-                mlflow.log_metric("total_reward", total_reward, step=episode_idx)
-                mlflow.log_metric("distance", env.distance, step=episode_idx)
-                mlflow.log_metric("std", model.current_std, step=episode_idx)
+                # mlflow.log_metric("total_reward", total_reward, step=episode_idx)
+                # mlflow.log_metric("distance", env.distance, step=episode_idx)
+                # mlflow.log_metric("std", model.current_std, step=episode_idx)
 
                 # Finaliza simulação baseado no valor desejado de desvio padrão
                 print(model.current_std)

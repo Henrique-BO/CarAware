@@ -2,21 +2,62 @@ import os
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import mlflow
 
+from collections import deque
 from tensorflow.core.framework import summary_pb2
 from rl.utils import build_mlp, create_counter_variable, create_mean_metrics_from_dict
+
+class ObservationBuffer:
+    """
+    Maintains a rolling buffer of recent sensor observations for LSTM input.
+    """
+
+    def __init__(self, num_inputs, sequence_length):
+        """
+        :param sequence_length: Number of time steps in each sequence.
+        :param num_inputs: Number of features in a single observation.
+        """
+        self.sequence_length = sequence_length
+        self.num_inputs = num_inputs
+        self.buffer = deque(maxlen=sequence_length)
+
+        # # Initialize with zeros so buffer is always full
+        # for _ in range(sequence_length):
+        #     self.buffer.append(np.zeros(num_inputs, dtype=np.float32))
+
+    def append(self, new_observation):
+        """
+        Add a new observation (shape [num_inputs]) to the buffer.
+        """
+        new_observation = np.asarray(new_observation)
+        assert new_observation.shape == (self.num_inputs,)
+        self.buffer.append(new_observation)
+
+    def get_sequence(self):
+        """
+        Returns the buffer as a tensor of shape [1, sequence_length, num_inputs],
+        ready for input to an LSTM-based network.
+        """
+        return np.stack(self.buffer) # shape [sequence_length, num_inputs]
+
+    def __len__(self):
+        """
+        Returns the number of observations in the buffer.
+        """
+        return len(self.buffer)
 
 class PolicyGraph():
     """
         Manages the policy computation graph
     """
 
-    def __init__(self, input_states, taken_actions, action_space, scope_name,
+    def __init__(self, input_sequence, taken_actions, action_space, scope_name,
                  initial_std=0.4, initial_mean_factor=0.1,
                  pi_hidden_sizes=(500, 300), vf_hidden_sizes=(500, 300)):
         """
-            input_states [batch_size, width, height, depth]:
-                Input images to predict actions for
+            input_sequence [batch_size, sequence_length, num_inputs]:
+                Placeholder of input sequences for training
             taken_actions [batch_size, num_actions]:
                 Placeholder of taken actions for training
             action_space (gym.spaces.Box):
@@ -36,9 +77,25 @@ class PolicyGraph():
         num_actions, action_min, action_max = action_space.shape[0], action_space.low, action_space.high  #len(action_space)+1
 
         with tf.variable_scope(scope_name):
+            # LSTM encoder to capture temporal dependencies
+            self.lstm_cell = tf.nn.rnn_cell.LSTMCell(128)
+            self.outputs, _ = tf.nn.dynamic_rnn(
+                self.lstm_cell,
+                input_sequence,
+                dtype=tf.float32,
+                scope="lstm_encoder"
+            )
+            # Use the last output as feature representation
+            self.features = self.outputs[:, -1, :]
+
             # Policy branch π(a_t | s_t; θ)
-            self.pi = build_mlp(input_states, hidden_sizes=pi_hidden_sizes, activation=tf.nn.relu,
-                                output_activation=tf.nn.tanh)  # tf.nn.softmax
+            self.pi = build_mlp(
+                self.features,
+                hidden_sizes=pi_hidden_sizes,
+                activation=tf.nn.relu,
+                output_activation=tf.nn.tanh
+            )
+
             self.action_mean = tf.layers.dense(self.pi, num_actions,
                                                activation=tf.nn.tanh,  # tf.nn.softmax
                                                kernel_initializer=tf.initializers.variance_scaling(scale=initial_mean_factor),
@@ -50,7 +107,7 @@ class PolicyGraph():
             if vf_hidden_sizes is None:
                 self.vf = self.pi # Share features if None
             else:
-                self.vf = build_mlp(input_states, hidden_sizes=vf_hidden_sizes, activation=tf.nn.relu, output_activation=tf.nn.relu)
+                self.vf = build_mlp(self.features, hidden_sizes=vf_hidden_sizes, activation=tf.nn.relu, output_activation=tf.nn.relu)
             self.value = tf.squeeze(tf.layers.dense(self.vf, 1, activation=None, name="value"), axis=-1)
 
             # Create graph for sampling actions
@@ -69,13 +126,15 @@ class PPO():
         Proximal policy gradient model class
     """
 
-    def __init__(self, input_shape, action_space,
+    def __init__(self, num_inputs, sequence_length, action_space,
                  learning_rate=3e-4, lr_decay=0.998, epsilon=0.2,
                  value_scale=0.5, entropy_scale=0.01, initial_std=0.4,
                  model_dir="./"):
         """
-            input_shape [3]:
-                Shape of input images as a tuple (width, height, depth)
+            num_inputs (int):
+                Number of input features
+            sequence_length (int):
+                Length of input sequences
             action_space (gym.spaces.Box):
                 Continous action space of our agent
             learning_rate (float):
@@ -94,8 +153,10 @@ class PPO():
                 Directory to output the trained model and log files
         """
 
-        num_actions = action_space.shape[0]
-        #num_actions = len(action_space)  # Define quantas ações serão geradas pela RN
+        self.num_actions = action_space.shape[0]
+        self.num_inputs = num_inputs
+        self.sequence_length = sequence_length
+        #self.num_actions = len(action_space)  # Define quantas ações serão geradas pela RN
         self.current_std = 0
 
         # Create counters
@@ -104,8 +165,8 @@ class PPO():
         self.episode_counter      = create_counter_variable(name="episode_counter")
 
         # Create placeholders
-        self.input_states  = tf.placeholder(shape=(None, input_shape), dtype=tf.float32, name="input_state_placeholder")  # *input_shape
-        self.taken_actions = tf.placeholder(shape=(None, num_actions), dtype=tf.float32, name="taken_action_placeholder")
+        self.input_states  = tf.placeholder(shape=(None, sequence_length, num_inputs), dtype=tf.float32, name="input_state_placeholder")  # *input_shape
+        self.taken_actions = tf.placeholder(shape=(None, self.num_actions), dtype=tf.float32, name="taken_action_placeholder")
         self.returns   = tf.placeholder(shape=(None,), dtype=tf.float32, name="returns_placeholder")
         self.advantage = tf.placeholder(shape=(None,), dtype=tf.float32, name="advantage_placeholder")
 
@@ -153,7 +214,7 @@ class PPO():
         metrics["train_loss/value"] = tf.metrics.mean(self.value_loss)
         metrics["train_loss/entropy"] = tf.metrics.mean(self.entropy_loss)
         metrics["train_loss/loss"] = tf.metrics.mean(self.loss)
-        for i in range(num_actions):
+        for i in range(self.num_actions):
             metrics["train_actor/action_{}/taken_actions".format(i)] = tf.metrics.mean(tf.reduce_mean(self.taken_actions[:, i]))
             metrics["train_actor/action_{}/mean".format(i)] = tf.metrics.mean(tf.reduce_mean(self.policy.action_mean[:, i]))
             metrics["train_actor/action_{}/std".format(i)] = tf.metrics.mean(tf.reduce_mean(tf.exp(self.policy.action_logstd[i])))
@@ -165,7 +226,7 @@ class PPO():
 
         # Set up stepwise training summaries
         summaries = []
-        for i in range(num_actions):
+        for i in range(self.num_actions):
             summaries.append(tf.summary.histogram("train_actor_step/action_{}/taken_actions".format(i), self.taken_actions[:, i]))
             summaries.append(tf.summary.histogram("train_actor_step/action_{}/mean".format(i), self.policy.action_mean[:, i]))
             summaries.append(tf.summary.histogram("train_actor_step/action_{}/std".format(i), tf.exp(self.policy.action_logstd[i])))
@@ -175,7 +236,7 @@ class PPO():
 
         # Set up stepwise prediction summaries
         summaries = []
-        for i in range(num_actions):
+        for i in range(self.num_actions):
             summaries.append(tf.summary.scalar("predict_actor/action_{}/sampled_action".format(i), self.policy.sampled_action[0, i]))
             summaries.append(tf.summary.scalar("predict_actor/action_{}/mean".format(i), self.policy.action_mean[0, i]))
             summaries.append(tf.summary.scalar("predict_actor/action_{}/std".format(i), tf.exp(self.policy.action_logstd[i])))
@@ -257,7 +318,7 @@ class PPO():
     def predict(self, input_states, greedy=False, write_to_summary=False):
         # Extend input axis 0 if no batch dim
         input_states = np.asarray(input_states)
-        if len(input_states.shape) != 2:
+        if len(input_states.shape) != 3:
             input_states = [input_states]
 
         # Predict action
@@ -291,6 +352,7 @@ class PPO():
         summary = tf.Summary()
         summary.value.add(tag=summary_name, simple_value=value)
         self.train_writer.add_summary(summary, step)
+        mlflow.log_metric(summary_name, value, step=step)
 
     def write_dict_to_summary(self, summary_name, params, step):
         summary_op = tf.summary.text(summary_name, tf.stack([tf.convert_to_tensor([k, str(v)]) for k, v in params.items()]))
