@@ -8,6 +8,56 @@ from collections import deque
 from tensorflow.core.framework import summary_pb2
 from rl.utils import build_mlp, create_counter_variable, create_mean_metrics_from_dict
 
+class ModelWrapper:
+    """
+    Wrapper for the PPO model to handle training and prediction.
+    """
+
+    def __init__(self, model):
+        self.model = model
+        self.buffer = ObservationBuffer(model.num_inputs, model.sequence_length)
+        for i in range(model.sequence_length):
+            self.buffer.append(np.zeros((model.num_inputs,)))
+
+    def reset(self, initial_state):
+        """
+        Resets the observation buffer with the initial state.
+        """
+        self.buffer.reset()
+
+    def predict(self, initial_state, input_states, greedy=False, write_to_summary=False):
+        self.buffer.append(input_states)
+        input_sequence = self.buffer.get_sequence()
+        if input_sequence is None:
+            raise ValueError("Buffer not full: expected {} elements, got {}".format(
+                self.model.sequence_length, len(self.buffer.buffer)))
+        assert input_sequence.shape == (self.model.sequence_length, self.model.num_inputs)
+
+        action, value = self.model.predict(np.expand_dims(input_sequence, axis=0), greedy=greedy, write_to_summary=write_to_summary)
+        prediction = np.array([
+            initial_state[0] + action[0],
+            initial_state[1] + action[1]
+        ])
+
+        return input_sequence, prediction, action, value
+
+    def train_epoch(self, state_sequences, taken_actions, returns, advantages, batch_size):
+        num_samples = len(state_sequences)
+        indices = np.arange(num_samples)
+        np.random.shuffle(indices)
+
+        for i in range(int(np.ceil(num_samples / batch_size))):
+            # Sample mini-batch randomly
+            begin = i * batch_size
+            end   = begin + batch_size
+            if end > num_samples:
+                end = None
+            mb_idx = indices[begin:end]
+
+            # Optimize network
+            self.model.train(state_sequences[mb_idx], taken_actions[mb_idx],
+                        returns[mb_idx], advantages[mb_idx])
+
 class ObservationBuffer:
     """
     Maintains a rolling buffer of recent sensor observations for LSTM input.
@@ -22,10 +72,6 @@ class ObservationBuffer:
         self.num_inputs = num_inputs
         self.buffer = deque(maxlen=sequence_length)
 
-        # # Initialize with zeros so buffer is always full
-        # for _ in range(sequence_length):
-        #     self.buffer.append(np.zeros(num_inputs, dtype=np.float32))
-
     def append(self, new_observation):
         """
         Add a new observation (shape [num_inputs]) to the buffer.
@@ -39,13 +85,15 @@ class ObservationBuffer:
         Returns the buffer as a tensor of shape [1, sequence_length, num_inputs],
         ready for input to an LSTM-based network.
         """
+        if len(self.buffer) < self.sequence_length:
+            return None
         return np.stack(self.buffer) # shape [sequence_length, num_inputs]
 
-    def __len__(self):
+    def reset(self):
         """
-        Returns the number of observations in the buffer.
+        Resets the buffer to empty.
         """
-        return len(self.buffer)
+        self.buffer.clear()
 
 class PolicyGraph():
     """
@@ -54,7 +102,7 @@ class PolicyGraph():
 
     def __init__(self, input_sequence, taken_actions, action_space, scope_name,
                  initial_std=0.4, initial_mean_factor=0.1,
-                 pi_hidden_sizes=(500, 300), vf_hidden_sizes=(500, 300)):
+                 pi_hidden_sizes=(3, 64), vf_hidden_sizes=(3, 64)):
         """
             input_sequence [batch_size, sequence_length, num_inputs]:
                 Placeholder of input sequences for training

@@ -10,7 +10,7 @@ from datetime import datetime
 import mlflow
 import mlflow.tensorflow
 
-from rl.ppo import PPO, ObservationBuffer
+from rl.ppo import PPO, ModelWrapper
 from rl.run_eval import run_eval
 from rl.utils import compute_gae
 from rl.CarlaEnv.carla_env import CarlaEnv
@@ -128,18 +128,19 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     epsilon=ppo_epsilon, initial_std=initial_std,
                     value_scale=value_scale, entropy_scale=entropy_scale,
                     model_dir=os.path.join("models", model_name))
+        model_wrapper = ModelWrapper(model)
         print("Model created")
 
         # Prompt to load existing model if any
-        # if not restart:
-        #     if os.path.isdir(model.log_dir) and len(os.listdir(model.log_dir)) > 0:
-        #         answer = input("Model \"{}\" already exists. Do you wish to continue (C) or restart training (R)? ".format(model_name))
-        #         if answer.upper() == "C":
-        #             pass
-        #         elif answer.upper() == "R":
-        #             restart = True
-        #         else:
-        #             raise Exception("There are already log files for model \"{}\". Please delete it or change model_name and try again".format(model_name))
+        if not restart:
+            if os.path.isdir(model.log_dir) and len(os.listdir(model.log_dir)) > 0:
+                answer = input("Model \"{}\" already exists. Do you wish to continue (C) or restart training (R)? ".format(model_name))
+                if answer.upper() == "C":
+                    pass
+                elif answer.upper() == "R":
+                    restart = True
+                else:
+                    raise Exception("There are already log files for model \"{}\". Please delete it or change model_name and try again".format(model_name))
 
         if restart:
             shutil.rmtree(model.model_dir)
@@ -282,14 +283,13 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                         [str(simulation.episodio_atual), datetime.date(datetime.now()), datetime.now().strftime("%H:%M:%S"),
                         simulation.sim_total_time, reason, 999, 999])
 
-                mlflow.log_metric("eval_reward", eval_reward, step=simulation.episodio_atual)
-
                 # Indica para o módulo top-view que finalizou a fase de evaluation
                 simulation.eval = False
             # Reset environment
             state, terminal_state, total_reward = env.reset()
-            buffer = ObservationBuffer(num_inputs, sequence_length)
-            buffer.append(state)
+
+            veh_gt = simulation.ego_vehicle[0].get_location()
+            out = [veh_gt.x, veh_gt.y]
 
             # While episode not done
             print(f"Training Episode {simulation.episodio_atual} (Step {model.get_train_step_idx()})")
@@ -301,78 +301,59 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 simulation.training_atual = idx_training
                 state_sequences, taken_actions, values, rewards, dones = [], [], [], [], []
                 current_veh = 0
-                #if ego_num == 1:
-                #    single_veh = 10
-                    #single_veh = random.randint(0, 9)
-                #else:
-                #    single_veh = 10
-                for idx_horizon in range(horizon):
-                    if len(buffer) < sequence_length:
-                        state, _, _ = env.step(np.zeros(num_actions), simulation.ego_vehicle[current_veh], current_veh)
-                        buffer.append(state)
-                        continue
 
+                for idx_horizon in range(horizon):
                     simulation.horizonte_atual = idx_horizon
-                    #action_lst, value_lst = [], []
-                    #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
-                    state_sequence = buffer.get_sequence()
-                    action, value = model.predict(state_sequence, write_to_summary=True)
+
+                    # Get action based on previous state
+                    max_prob = 0.7
+                    min_prob = 0.1
+                    gt_probability = max_prob - (max_prob - min_prob) * (idx_horizon / horizon)
+                    if random.random() < gt_probability:
+                        veh_gt = simulation.ego_vehicle[current_veh].get_location()
+                        current_pos = [veh_gt.x, veh_gt.y]
+                    else:
+                        current_pos = out
+
+                    state_sequence, out, action, value = model_wrapper.predict(current_pos, state, write_to_summary=True)
 
                     # Perform action
-                    #new_state_lst, reward_lst, terminal_state_lst = [], [], []
-                    #for action, vehicle, veh_num in zip(action_lst,simulation.ego_vehicle, enumerate(simulation.ego_vehicle)):  # Roda N vezes, para N veículos simulados
-                    new_state, reward, terminal_state = env.step(action, simulation.ego_vehicle[current_veh], current_veh)  # , single_veh)
-                    #new_state_lst.append(new_state)
-                    #reward_lst.append(reward)
-                    #terminal_state_lst.append(terminal_state)
+                    state, reward, terminal_state = env.step(out, simulation.ego_vehicle[current_veh], current_veh)  # , single_veh)
+
+                    # Model prediction is not yet valid
+                    if state_sequence is None:
+                        continue
 
                     total_reward += reward
-                    #total_reward += np.mean(np.array(reward))
 
-                    #print(action)
-
-                    #for state1, action1, value1,reward1,terminal_state1,new_state1 in zip(state_lst, action_lst, value_lst,
-                    #                                                                reward_lst, terminal_state_lst,
-                    #                                                                new_state_lst):
                     state_sequences.append(state_sequence) # [T, sequence_length, *input_shape]
                     taken_actions.append(action) # [T,  num_actions]
                     values.append(value)         # [T]
                     rewards.append(reward)       # [T]
                     dones.append(terminal_state) # [T]
-                    state = new_state
-                    buffer.append(new_state)
-
-                    #idx = 0
-                    #if len(states) == horizon: # adiciona na lista apenas o número de horizons definido
-                    #    break
-                    #else:
-                    #    idx+=1  # identifica ultimo estado
 
                     # Acrescenta Reward instantâneo no HUD
                     simulation.reward_inst = total_reward
 
                     # Lógica para voltar a ciclagem de treinamento para o primeiro veículo
-                    if current_veh == ego_num-1:
-                        current_veh = 0
-                    else:
-                        current_veh += 1
+                    # if current_veh == ego_num-1:
+                    #     current_veh = 0
+                    # else:
+                    #     current_veh += 1
 
                     if terminal_state:
                         break
 
                     if top_view.input_control.quit:  # Evento tecla ESC ou crash detectados
                         break
-                    #print("prediction: ", action)
 
                 if top_view.input_control.quit:  # Evento tecla ESC ou crash detectados
                     break
 
                 # Calculate last value (bootstrap value)
-                state_sequence = buffer.get_sequence()
-                _, last_values = model.predict(state_sequence)  # usa último estado gerado pelo último carro
-                #print("last_values: ", last_values)
-                #print("state: ", state)
-                #print("values_ant: ", values)
+                veh_gt = simulation.ego_vehicle[current_veh].get_location()
+                current_pos = [veh_gt.x, veh_gt.y]
+                _, _, _, last_values = model_wrapper.predict(current_pos, state)  # usa último estado gerado pelo último carro
 
                 # Compute GAE
                 advantages = compute_gae(rewards, values, last_values, dones, discount_factor, gae_lambda)
@@ -386,13 +367,6 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 advantages      = np.array(advantages)
 
                 T = len(rewards)
-                #print("T: ", T)
-                #print("states shape: ",states.shape)
-                #print("input_shape: ", input_shape)  #*input_shape
-                #print("input shape: ", input_shape)
-                #print("taken actions: ", taken_actions.shape)
-                #print("num actions: ", num_actions)
-                #print("taken actions: ", taken_actions)
 
                 assert state_sequences.shape == (T, sequence_length, num_inputs)  # assert states.shape == (T, *input_shape)
                 assert taken_actions.shape == (T, num_actions)
@@ -402,26 +376,13 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 # Train for some number of epochs
                 model.update_old_policy() # θ_old <- θ
                 for _ in range(num_epochs):
-                    num_samples = len(state_sequences)
-                    indices = np.arange(num_samples)
-                    np.random.shuffle(indices)
-
-                    for i in range(int(np.ceil(num_samples / batch_size))):
-                        # Sample mini-batch randomly
-                        begin = i * batch_size
-                        end   = begin + batch_size
-                        if end > num_samples:
-                            end = None
-                        mb_idx = indices[begin:end]
-
-                        # Optimize network
-                        model.train(state_sequences[mb_idx], taken_actions[mb_idx],
-                                    returns[mb_idx], advantages[mb_idx])
+                    model_wrapper.train_epoch(state_sequences, taken_actions, returns, advantages, batch_size)
 
                 # Write episodic values
                 #training_atual = (simulation.episodio_atual*num_training) + idx_training
                 model.write_value_to_summary("train/reward", total_reward, episode_idx)
                 model.write_value_to_summary("train/distance", env.distance, episode_idx)
+                model.write_value_to_summary("train/std", model.current_std, episode_idx)
                 model.write_episodic_summaries()
 
                 if map == "Gradual_Random":
@@ -432,12 +393,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     csv_writer.writerow([str(simulation.episodio_atual), datetime.date(datetime.now()),
                                         datetime.now().strftime("%H:%M:%S"), simulation.sim_total_time, "Episode", 999, 999])
 
-                # mlflow.log_metric("total_reward", total_reward, step=episode_idx)
-                # mlflow.log_metric("distance", env.distance, step=episode_idx)
-                # mlflow.log_metric("std", model.current_std, step=episode_idx)
-
                 # Finaliza simulação baseado no valor desejado de desvio padrão
-                print(model.current_std)
                 # if model.current_std <= target_std:
                 #     top_view.input_control.quit = True
 

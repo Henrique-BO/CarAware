@@ -4,7 +4,7 @@ import numpy as np
 import pyautogui
 
 from rl.utils import VideoRecorder, ExtendedKalmanFilter
-from rl.ppo import ObservationBuffer
+from rl.ppo import ModelWrapper
 
 
 def run_eval(env, model, video_filename=None, eval_time = 20, simulation = None, ego_num = 0, play = False, record_play_stats = False):
@@ -61,22 +61,17 @@ def run_eval(env, model, video_filename=None, eval_time = 20, simulation = None,
     dist_acum_rl = [[] for i in range(ego_num)]
     dist_acum_kf = [[] for i in range(ego_num)]
 
-    buffer = ObservationBuffer(model.num_inputs, model.sequence_length)
-    buffer.append(state)
+    model_wrapper = ModelWrapper(model)
+    veh_gt = simulation.ego_vehicle[current_veh].get_location()
+    prediction = [veh_gt.x, veh_gt.y]  # Posição inicial do veículo
 
     while time.time() < time_now + eval_time:  # X segundos de avaliação
-        if len(buffer) < model.sequence_length:
-            state, _, _ = env.step(np.zeros(model.num_actions), simulation.ego_vehicle[current_veh], current_veh)
-            buffer.append(state)
-            continue
-
         #time.sleep(1/30)
         # Take deterministic actions at test time (std=0)
-        state_sequence = buffer.get_sequence()
-        action, _ = model.predict(state_sequence, greedy=True)
-
-        state, reward, terminal = env.step(action, simulation.ego_vehicle[current_veh], current_veh)
-        buffer.append(state)
+        seq, prediction, action, _ = model_wrapper.predict(prediction, state, greedy=True)
+        state, reward, terminal = env.step(prediction, simulation.ego_vehicle[current_veh], current_veh)
+        if seq is None:
+            continue
 
         if video_recorder is not None:
             # make a screenshot

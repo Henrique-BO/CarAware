@@ -141,27 +141,30 @@ class CarlaEnv(gym.Env):
         #self.vetor_act_high = [210, 310]
 
         # ACT - Define limites de coordenadas para mapa escolhido
-        if map == "Town01":
-            self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
-            self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
-        elif map == "Town02":
-            self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
-            self.vetor_act_high = [205, 315]  # Coordenadas X,Y
-        elif map == "Town10HD_Opt":
-            self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-            self.vetor_act_high = [125, 155]  # Coordenadas X,Y
-        elif map == "Random" or map == "Gradual_Random":
-            chosen_map = simulation.chosen_random_map
-            if chosen_map == "Town01":
-                self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
-                self.vetor_act_high = [210, 310]  # Coordenadas X,Y
-            elif chosen_map == "Town02":
-                self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
-                self.vetor_act_high = [410, 340]  # Coordenadas X,Y
-            elif chosen_map == "Town10HD_Opt":
-                self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-                self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # if map == "Town01":
+        #     self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
+        # elif map == "Town02":
+        #     self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
+        #     self.vetor_act_high = [205, 315]  # Coordenadas X,Y
+        # elif map == "Town10HD_Opt":
+        #     self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # elif map == "Random" or map == "Gradual_Random":
+        #     chosen_map = simulation.chosen_random_map
+        #     if chosen_map == "Town01":
+        #         self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [210, 310]  # Coordenadas X,Y
+        #     elif chosen_map == "Town02":
+        #         self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
+        #         self.vetor_act_high = [410, 340]  # Coordenadas X,Y
+        #     elif chosen_map == "Town10HD_Opt":
+        #         self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [125, 155]  # Coordenadas X,Y
 
+        # Don't normalize - increments
+        self.vetor_act_low = [-1, -1]  # [-15, 90]
+        self.vetor_act_high = [1, 1]  # [210, 310]
 
         if not last_positions_training:
             # Valores reais em formato de vetor
