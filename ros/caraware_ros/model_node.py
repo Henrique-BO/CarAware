@@ -34,6 +34,7 @@ class ModelNode(Node):
         self.position_pub_ = self.create_publisher(PointStamped, 'vehicle_position', 10)
 
         # Data storage
+        self.current_position_ = np.array([0.0, 0.0])
         self.imu_data = None
         self.ack_data = None
 
@@ -42,7 +43,7 @@ class ModelNode(Node):
         self.server_port = 5000         # Port used by serve_model.py
         self.socket = self.connect_to_server()
 
-        self.timer_period = 1.0 / 50  # 50 Hz
+        self.timer_period = 1.0 / publish_rate
         self.timer = self.create_timer(self.timer_period, self.process_data)
         self.get_logger().info('Model node initialized.')
 
@@ -92,6 +93,7 @@ class ModelNode(Node):
 
         # Prepare input data for the model
         input_data = {
+            'position': self.current_position_.tolist(),
             'state': [
                 *self.imu_data['linear_acceleration'],
                 *self.imu_data['angular_velocity'],

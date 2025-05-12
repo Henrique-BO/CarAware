@@ -6,7 +6,7 @@ import json
 import numpy as np
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from rl.ppo import PPO
+from rl.ppo import PPO, ModelWrapper
 from rl.CarlaEnv.carla_env import CarlaEnv
 
 
@@ -62,13 +62,15 @@ class ModelServer:
         Load the trained PPO model.
         """
         self.env = CarlaEnv(map="Town01")
-        input_shape = self.env.observation_space.shape[0]
+        num_inputs = self.env.observation_space.shape[0]
+        sequence_length = 4 # TODO get from model manifest
         action_space = self.env.action_space
         model_dir = os.path.join("models", model_name)
 
-        self.model = PPO(input_shape=input_shape, action_space=action_space, model_dir=model_dir)
+        self.model = PPO(num_inputs, sequence_length, action_space=action_space, model_dir=model_dir)
         self.model.init_session()
         self.model.load_latest_checkpoint()
+        self.model_wrapper = ModelWrapper(self.model)
 
     def handle_client(self, client_socket):
         """
@@ -83,14 +85,15 @@ class ModelServer:
 
                 # Parse the input JSON
                 input_data = json.loads(data)
-                input_states = np.array(input_data["state"]).reshape(1, -1)
+                input_states = np.array(input_data["state"])
+                position = np.array(input_data["position"]).reshape(1, -1)
 
                 # Predict action
-                action, _ = self.model.predict(input_states, greedy=False)
-                action = self.env.network_to_carla(action)
+                _, prediction, _, _ = self.model_wrapper.predict(position, input_states, greedy=True)
+                prediction = self.env.network_to_carla(prediction)
 
                 # Send the action back to the client
-                response = {"action": action}
+                response = {"action": prediction.tolist()}
                 client_socket.send(json.dumps(response).encode("utf-8"))
         except Exception as e:
             print(f"Error: {e}")

@@ -21,6 +21,12 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
+# Install ROS 2 packages
+RUN apt-get update && apt-get install -y \
+    ros-foxy-rqt-tf-tree \
+    ros-foxy-robot-localization \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install CARLA ROS Bridge dependencies
 COPY install_dependencies.sh /tmp/ros-bridge/install-dependencies.sh
 COPY requirements.txt /tmp/ros-bridge/requirements.txt

@@ -22,22 +22,59 @@ def generate_launch_description():
         }.items()
     )
 
-    model_node = Node(
-        package='caraware_ros',
-        executable='model_node',
-        name='model_node',
+    robot_localization_file_path = os.path.join(
+        get_package_share_directory('caraware_ros'),
+        'config',
+        'ekf.yaml'
+    )
+
+    # Start robot localization using an Extended Kalman filter
+    robot_localization_ekf = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
         output='screen',
         parameters=[
-            {'imu_topic': '/carla/EGO_1/IMU'},
-            {'ackermann_topic': '/carla/EGO_1/Speed_SAS'},
-            {'publish_rate': 50.0}
+            robot_localization_file_path,
+            # {'use_sim_time': True}
         ],
         remappings=[
-            ('vehicle_pose', '/model/vehicle_pose')
+            ('/carla/EGO_1/IMU', '/carla/EGO_1/IMU'),
+            ('/carla/EGO_1/Speed_SAS/twist', '/carla/EGO_1/Speed_SAS/twist'),
         ]
     )
 
+    base_to_imu = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0', '0', '0', '0', '0', '0', '1', 'base_link', 'EGO_1/IMU']
+    )
+
+    base_to_speed_sas = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0', '0', '0', '0', '0', '0', '1', 'base_link', 'EGO_1/Speed_SAS']
+    )
+
+    # model_node = Node(
+    #     package='caraware_ros',
+    #     executable='model_node',
+    #     name='model_node',
+    #     output='screen',
+    #     parameters=[
+    #         {'imu_topic': '/carla/EGO_1/IMU'},
+    #         {'ackermann_topic': '/carla/EGO_1/Speed_SAS'},
+    #         {'publish_rate': 50.0}
+    #     ],
+    #     remappings=[
+    #         ('vehicle_pose', '/model/vehicle_pose')
+    #     ]
+    # )
+
     return LaunchDescription([
         carla_ros_bridge_launch,
-        model_node
+        robot_localization_ekf,
+        base_to_imu,
+        base_to_speed_sas,
+        # model_node
     ])
