@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             'model_node = caraware_ros.model_node:main',
             'vesc_to_ackermann = caraware_ros.vesc_to_ackermann:main',
+            'carla_republisher = caraware_ros.carla_republisher:main',
         ],
     },
 )

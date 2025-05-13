@@ -6,7 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PointStamped1
+        - /TF1
+        - /TF1/Frames1
+        - /CARLA IMU1
+        - /Axes2
       Splitter Ratio: 0.5
     Tree Height: 623
   - Class: rviz_common/Selection
@@ -43,19 +46,75 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
-      Class: rviz_default_plugins/PointStamped
-      Color: 204; 41; 204
+    - Class: rviz_default_plugins/Axes
       Enabled: true
-      History Length: 1
-      Name: PointStamped
+      Length: 1
+      Name: Axes
+      Radius: 0.10000000149011612
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        EGO_1/GPS:
+          Value: false
+        EGO_1/IMU:
+          Value: false
+        EGO_1/Speed_SAS:
+          Value: false
+        base_link:
+          Value: true
+        imu_frame:
+          Value: false
+        map:
+          Value: false
+        odom:
+          Value: true
+        twist_frame:
+          Value: false
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        map:
+          EGO_1/GPS:
+            {}
+          EGO_1/IMU:
+            {}
+          EGO_1/Speed_SAS:
+            {}
+          odom:
+            base_link:
+              imu_frame:
+                {}
+              twist_frame:
+                {}
+      Update Interval: 0
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: false
+      Length: 100
+      Name: base_link
       Radius: 10
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /vehicle_position
+      Reference Frame: base_link
+      Value: false
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 100
+      Name: CARLA IMU
+      Radius: 10
+      Reference Frame: EGO_1/IMU
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 100
+      Name: Axes
+      Radius: 10
+      Reference Frame: map
       Value: true
   Enabled: true
   Global Options:
@@ -100,25 +159,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1174.8345947265625
+      Distance: 1123.552001953125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 127.58289337158203
-        Y: -29.109933853149414
-        Z: -14.752724647521973
+        X: 32.66440200805664
+        Y: -65.33135223388672
+        Z: 9.601417541503906
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.455397605895996
+      Pitch: 1.525397539138794
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.010399112477898598
+      Yaw: 3.1354029178619385
     Saved: ~
 Window Geometry:
   Displays:
