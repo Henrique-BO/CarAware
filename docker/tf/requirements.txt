@@ -16,3 +16,4 @@ pyautogui
 python-xlib
 protobuf==3.20.
 mlflow
+zmq

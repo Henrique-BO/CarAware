@@ -76,6 +76,27 @@ def generate_launch_description():
         ]
     )
 
+    model_node = Node(
+        package='caraware_ros',
+        executable='model_node',
+        name='model_node',
+        output='screen',
+        parameters=[
+            {'publish_odometry': False},
+            {'odometry_port': 5000},
+            {'serve_predictions': True},
+            {'model_port': 5001},
+            {'frame_id': 'model_frame'},
+            {'publish_rate': 50.0}
+        ],
+        remappings=[
+            ('/imu/data', '/imu/data'),
+            ('/speed_sas/ackermann', '/carla/EGO_1/Speed_SAS'),
+            ('/odometry/filtered', '/odometry/filtered'),
+            ('/model/prediction', '/model/prediction')
+        ]
+    )
+
     rviz = Node(
         package='rviz2',
         executable='rviz2',
@@ -88,27 +109,12 @@ def generate_launch_description():
             'localization.rviz')]
     )
 
-    # model_node = Node(
-    #     package='caraware_ros',
-    #     executable='model_node',
-    #     name='model_node',
-    #     output='screen',
-    #     parameters=[
-    #         {'imu_topic': '/carla/EGO_1/IMU'},
-    #         {'ackermann_topic': '/carla/EGO_1/Speed_SAS'},
-    #         {'publish_rate': 50.0}
-    #     ],
-    #     remappings=[
-    #         ('vehicle_pose', '/model/vehicle_pose')
-    #     ]
-    # )
-
     return LaunchDescription([
         carla_ros_bridge_launch,
         robot_localization_ekf,
         base_to_imu,
         base_to_speed_sas,
         carla_republisher,
+        model_node,
         rviz,
-        # model_node
     ])

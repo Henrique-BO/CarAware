@@ -1,13 +1,13 @@
 import argparse
-import socket
 import os
 import sys
 import json
 import numpy as np
+import zmq
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from rl.ppo import PPO, ModelWrapper
-from rl.CarlaEnv.carla_env import CarlaEnv
+# from rl.ppo import PPO, ModelWrapper
+# from rl.CarlaEnv.carla_env import CarlaEnv
 
 
 def parse_args():
@@ -16,8 +16,8 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="Serve a trained PPO model.")
 
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server.")
-    parser.add_argument("--port", type=int, default=5000, help="Port to bind the server.")
+    parser.add_argument("--host", type=str, default="localhost", help="Host to bind the server.")
+    parser.add_argument("--port", type=int, default=5001, help="Port to bind the server.")
     parser.add_argument("--model", type=str, required=True, help="Trained model directory.")
     return parser.parse_args()
 
@@ -34,28 +34,29 @@ class ModelServer:
 
     def start(self):
         # Load the trained model
-        print("Loading model...")
-        self.load_model(self.model_name)
-        print("Model loaded successfully.")
+        # print("Loading model...")
+        # self.load_model(self.model_name)
+        # print("Model loaded successfully.")
 
         # Set up the server
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind((self.host, self.port))
-        self.server.listen(5)
-        print(f"Server listening on {self.host}:{self.port}")
+        context = zmq.Context()
+        self.socket = context.socket(zmq.REP)
+        self.socket.bind(f"tcp://*:5050")
+        print(f"Server listening on tcp://*:5050")
 
         try:
             while True:
-                # Accept a new client connection
-                client_socket, addr = self.server.accept()
-                print(f"Connection from {addr[0]}:{addr[1]}")
+                # Wait for a request from the client
+                message = self.socket.recv_json()
+                print(f"Received request: {message}")
 
-                # Handle the client in a separate thread or process
-                self.handle_client(client_socket)
+                # Process the request and send a response
+                response = self.handle_request(message)
+                self.socket.send_json(response)
         except KeyboardInterrupt:
             print("Shutting down server...")
         finally:
-            self.server.close()
+            self.socket.close()
 
     def load_model(self, model_name):
         """
@@ -72,34 +73,28 @@ class ModelServer:
         self.model.load_latest_checkpoint()
         self.model_wrapper = ModelWrapper(self.model)
 
-    def handle_client(self, client_socket):
+    def handle_request(self, input_data):
         """
-        Handle incoming client requests.
+        Handle incoming client requests and return a response.
         """
         try:
-            while True:
-                # Receive data from the client
-                data = client_socket.recv(1024).decode("utf-8")
-                if not data:
-                    break
+            observations = np.array(input_data["observations"])
 
-                # Parse the input JSON
-                input_data = json.loads(data)
-                input_states = np.array(input_data["state"])
-                position = np.array(input_data["position"]).reshape(1, -1)
+            # Parse the input JSON
+            # input_states = np.array(input_data["state"])
+            # position = np.array(input_data["position"]).reshape(1, -1)
 
-                # Predict action
-                _, prediction, _, _ = self.model_wrapper.predict(position, input_states, greedy=True)
-                prediction = self.env.network_to_carla(prediction)
+            # # Predict action
+            # _, prediction, _, _ = self.model_wrapper.predict(position, input_states, greedy=True)
+            # prediction = self.env.network_to_carla(prediction)
+            prediction = [observations[0], observations[1]]
 
-                # Send the action back to the client
-                response = {"action": prediction.tolist()}
-                client_socket.send(json.dumps(response).encode("utf-8"))
+            # Prepare the response
+            response = {"prediction": prediction}
+            return response
         except Exception as e:
             print(f"Error: {e}")
-        finally:
-            client_socket.close()
-
+            return {"error": str(e)}
 
 if __name__ == "__main__":
     args = parse_args()

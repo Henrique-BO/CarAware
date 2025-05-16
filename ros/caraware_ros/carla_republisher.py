@@ -1,19 +1,14 @@
 import rclpy
 import numpy as np
 import transforms3d
-import socket
-import json
-import threading
-
-from tf2_ros import Buffer, TransformListener, StaticTransformBroadcaster
-from tf2_ros.transform_broadcaster import TransformBroadcaster
 
 from rclpy.node import Node
+from tf2_ros import Buffer, TransformListener, StaticTransformBroadcaster
+
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import TwistWithCovarianceStamped
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import TransformStamped
-from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
 
 from rcl_interfaces.srv import SetParameters
 from std_srvs.srv import Trigger
@@ -63,15 +58,6 @@ class CarlaRepublisher(Node):
         # Services
         self.service = self.create_service(Trigger, 'calculate_map_to_odom', self.map_to_odom_callback)
         self.get_logger().info('Service `calculate_map_to_odom` ready')
-
-        self.set_param_client = self.create_client(SetParameters, '/ekf_filter_node/set_parameters')
-        while not self.set_param_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('SetParameters service not available, waiting...')
-        self.get_logger().info('SetParameters service available')
-
-        # Start a thread to handle incoming requests
-        self.server_thread = threading.Thread(target=self.start_server, daemon=True)
-        self.server_thread.start()
 
         self.get_logger().info('CarlaRepublisher node initialized')
 
@@ -154,117 +140,6 @@ class CarlaRepublisher(Node):
         tf_matrix[:3, 3] = translation
 
         return tf_matrix
-
-    def get_positioning_error(self):
-        """
-        Get the position error between the base_link and EGO_1/IMU frames.
-        """
-        try:
-            t_imu_to_base = self.tf_buffer.lookup_transform('base_link', 'EGO_1/IMU', rclpy.time.Time())
-            translation = np.array([
-                t_imu_to_base.transform.translation.x,
-                t_imu_to_base.transform.translation.y
-            ])
-            error = np.linalg.norm(translation)
-            return error
-        except Exception as e:
-            self.get_logger().error(f'Failed to compute positioning error: {e}')
-            return None
-
-    def start_server(self):
-        """
-        Start a TCP server
-        """
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind(('localhost', 5000))
-        self.server.listen(1)
-        self.get_logger().info('TCP socket server listening on port 5000')
-
-        try:
-            while True:
-                # Accept a new client connection
-                client_socket, addr = self.server.accept()
-                self.get_logger().info(f"Connection from {addr[0]}:{addr[1]}")
-
-                # Handle the client in a separate thread or process
-                client_socket.settimeout(10)
-                self.handle_client(client_socket)
-        except KeyboardInterrupt:
-            self.get_logger().info("Shutting down server...")
-        finally:
-            self.server.close()
-
-    def handle_client(self, client_socket):
-        """
-        Handle incoming client requests.
-        """
-        try:
-            while True:
-                # Receive data from the client
-                data = client_socket.recv(4096).decode("utf-8")
-                if not data:
-                    break
-                data = json.loads(data)
-                self.get_logger().info(f"Received data: {data}")
-                success = True
-
-                # Update process noise covariance
-                update_Q = data.get("update_Q", False)
-                Q = data.get("Q", None)
-                if update_Q and Q is not None:
-                    Q = np.array(Q)
-                    if Q.shape != (15, 15):
-                        self.get_logger().error("Invalid process noise covariance shape")
-                        success = False
-                    else:
-                        # Update the /ekf_filter_node process_noise_covariance ROS parameter
-                        self.get_logger().info(f"Setting process noise covariance: {Q}")
-
-                        param = Parameter()
-                        param.name = 'process_noise_covariance'
-                        param.value = ParameterValue(type=ParameterType.PARAMETER_DOUBLE_ARRAY, double_array_value=Q.flatten().tolist())
-                        request = SetParameters.Request()
-                        request.parameters = [param]
-
-                        self.get_logger().info("Calling set_parameters service")
-                        future = self.set_param_client.call_async(request)
-                        rclpy.spin_until_future_complete(self, future)
-                        if future.result() is None:
-                            self.get_logger().error("Failed to set process noise covariance")
-                            success = False
-                        else:
-                            Q = future.result()
-                            self.get_logger().info(f"Updated process noise covariance: {Q}")
-
-                # Compute localization error
-                get_error = data.get("get_error", False)
-                duration = data.get("duration", 0)
-                mean_error = None
-                if get_error and duration > 0:
-                    t0 = self.get_clock().now()
-                    sum_error = 0
-                    num_samples = 0
-                    while (self.get_clock().now() - t0).nanoseconds < duration * 1e9:
-                        error = self.get_positioning_error()
-                        if error is not None:
-                            sum_error += error
-                            num_samples += 1
-                        else:
-                            success = False
-                            break
-                    mean_error = sum_error / num_samples if num_samples > 0 else None
-                    self.get_logger().info(f"Mean positioning error: {mean_error}")
-
-                response = {
-                    "success": success,
-                    "error": mean_error,
-                    "Q": Q.tolist() if Q is not None else None,
-                }
-                client_socket.send(json.dumps(response).encode("utf-8"))
-        except Exception as e:
-            self.get_logger().info(f"Error: {e}")
-        finally:
-            client_socket.close()
 
 def main(args=None):
     rclpy.init(args=args)
