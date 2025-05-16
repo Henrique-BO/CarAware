@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     python3-pip \
+    python3-tk \
     python3-colcon-common-extensions \
     netcat \
     iputils-ping \

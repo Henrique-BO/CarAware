@@ -12,4 +12,8 @@ services:
   ros:
     depends_on:
       - carla
-    command: ["/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh"]
+      - tf
+    command: [
+      "/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh",
+      "model_node:=true",
+    ]

@@ -74,12 +74,12 @@ class CarlaRepublisher(Node):
         twist_msg.twist.twist.angular.z = \
             msg.drive.speed / self.wheelbase * np.tan(msg.drive.steering_angle)
         twist_msg.twist.covariance = \
-                [0.1**2,0.0, 0.0, 0.0, 0.0,     0.0,
-                 0.0,   0.0, 0.0, 0.0, 0.0,     0.0,
-                 0.0,   0.0, 0.0, 0.0, 0.0,     0.0,
-                 0.0,   0.0, 0.0, 0.0, 0.0,     0.0,
-                 0.0,   0.0, 0.0, 0.0, 0.05**2, 0.0,
-                 0.0,   0.0, 0.0, 0.0, 0.0,     0.0]
+                [0.1**2,0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0,   0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0,   0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0,   0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0,   0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0,   0.0, 0.0, 0.0, 0.0, 0.05**2]
         self.twist_publisher.publish(twist_msg)
 
     def map_to_odom_callback(self, request, response):

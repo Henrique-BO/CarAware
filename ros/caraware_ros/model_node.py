@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-import json
 import numpy as np
+import matplotlib.pyplot as plt
+import time
 import rclpy
 import transforms3d
-import time
 import zmq
+import threading
 
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PointStamped, TransformStamped
+from geometry_msgs.msg import PointStamped, TransformStamped
 from nav_msgs.msg import Odometry
 from tf2_ros import TransformBroadcaster, TransformListener, Buffer
 
@@ -24,18 +25,11 @@ class ModelNode(Node):
         super().__init__('model_node')
 
         # Declare ROS 2 parameters
-        self.declare_parameter('publish_odometry', True)
-        self.declare_parameter('odometry_port', 5000)
-
-        self.declare_parameter('serve_predictions', True)
-        self.declare_parameter('model_port', 5001)
+        self.declare_parameter('model_port', 5000)
         self.declare_parameter('frame_id', 'model_frame')
         self.declare_parameter('publish_rate', 50.0)
 
         # Retrieve parameter values
-        self.publish_odometry = self.get_parameter('publish_odometry').get_parameter_value().bool_value
-        self.odometry_port = self.get_parameter('odometry_port').get_parameter_value().integer_value
-        self.serve_predictions = self.get_parameter('serve_predictions').get_parameter_value().bool_value
         self.model_port = self.get_parameter('model_port').get_parameter_value().integer_value
         self.frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
         self.publish_rate = self.get_parameter('publish_rate').get_parameter_value().double_value
@@ -59,22 +53,21 @@ class ModelNode(Node):
         self.ekf_position = None
         self.base_link_orientation = None
 
-        context = zmq.Context()
-        # PUB socket for sending odometry data
-        if self.publish_odometry:
-            self.odo_socket = context.socket(zmq.PUB)
-            self.odo_socket.bind(f"tcp://*:{self.odometry_port}")
-            self.get_logger().info(f'Odometry data published on port {self.odometry_port}')
-
         # REQ socket for receiving model predictions
-        if self.serve_predictions:
-            self.pred_socket = context.socket(zmq.REQ)
-            self.pred_socket.connect(f"tcp://localhost:5050")
-            self.timer_period = 1.0 / self.publish_rate
-            self.timer = self.create_timer(self.timer_period, self.process_data)
-            self.get_logger().info(f'Model predictions requested on port 5050')
+        context = zmq.Context()
+        self.pred_socket = context.socket(zmq.REQ)
+        addr = f"tcp://localhost:{self.model_port}"
+        self.pred_socket.connect(addr)
+        self.timer_period = 1.0 / self.publish_rate
+        self.timer = self.create_timer(self.timer_period, self.process_data)
+        self.get_logger().info(f'Model predictions requested on {addr}')
 
-        self.process_data()
+        # Initialize real-time plotting
+        self.errors = []
+        self.timestamps = []
+        self.plot_thread = threading.Thread(target=self.plot_error, daemon=True)
+        self.plot_thread.start()
+
         self.get_logger().info('Model node initialized.')
 
     def imu_callback(self, msg):
@@ -88,7 +81,6 @@ class ModelNode(Node):
             'angular_velocity': [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z],
             'yaw': yaw,
         }
-        # self.get_logger().info(f'IMU data: {self.imu_data}')
 
     def ack_callback(self, msg):
         """
@@ -98,27 +90,19 @@ class ModelNode(Node):
             'speed': msg.drive.speed,
             'steering_angle': msg.drive.steering_angle
         }
-        # self.get_logger().info(f'Ackermann data: {self.ack_data}')
 
     def odo_callback(self, msg):
         """
         Callback for filtered state estimate.
         """
         try:
+            # Get the estimated position in the CARLA (map) frame
             transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-            self.ekf_position = [transform.transform.translation.x, transform.transform.translation.y]
+            self.ekf_position = [
+                transform.transform.translation.x,
+                transform.transform.translation.y
+            ]
             self.base_link_orientation = transform.transform.rotation
-            # self.get_logger().info(f'Base link position: {self.ekf_position}')
-            # self.get_logger().info(f'Base link orientation: {self.base_link_orientation}')
-
-            if self.publish_odometry:
-                odometry_data = {
-                    'position': self.ekf_position,
-                }
-                self.odo_socket.send_json(odometry_data)
-
-            if self.serve_predictions:
-                self.process_data()
         except Exception as e:
             self.get_logger().warn(f"Could not get map->base_link transform: {e}")
 
@@ -166,7 +150,45 @@ class ModelNode(Node):
         transform_msg.transform.rotation = self.base_link_orientation
         self.tf_broadcaster.sendTransform(transform_msg)
 
-        self.get_logger().info(f'Published prediction: {position_msg.point.x}, {position_msg.point.y}')
+        # Plot the prediction error in real time
+        try:
+            transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
+            gt = np.array([
+                transform.transform.translation.x,
+                transform.transform.translation.y
+            ])
+            error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
+
+            self.errors.append(error)
+            self.timestamps.append(self.get_clock().now().nanoseconds * 1e-9)  # Convert to seconds
+
+            if len(self.errors) > 1000:
+                self.errors.pop(0)
+                self.timestamps.pop(0)
+        except Exception as e:
+            self.get_logger().warn(f"Could not get map->base_link transform: {e}")
+
+    def plot_error(self):
+        """
+        Real-time plot of prediction error.
+        """
+        plt.ion()
+        fig, ax = plt.subplots()
+        ax.set_title("Prediction Error Over Time")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("Error (m)")
+        ax.grid()
+        line, = ax.plot([], [], 'r-')
+
+        while rclpy.ok():
+            if self.timestamps and self.errors:
+                line.set_xdata(self.timestamps)
+                line.set_ydata(self.errors)
+                ax.relim()
+                ax.autoscale_view()
+                plt.draw()
+                plt.pause(0.1)
+            time.sleep(0.1)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -176,7 +198,7 @@ def main(args=None):
     except KeyboardInterrupt:
         model_node.get_logger().info('Shutting down node...')
     finally:
-        # model_node.socket.close()
+        model_node.socket.close()
         model_node.destroy_node()
         rclpy.shutdown()
 
