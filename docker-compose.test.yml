@@ -15,5 +15,5 @@ services:
       - tf
     command: [
       "/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh",
-      "model_node:=true",
+      "plot_error:=true",
     ]

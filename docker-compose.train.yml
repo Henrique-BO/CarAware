@@ -2,7 +2,6 @@ services:
   tf:
     depends_on:
       - carla
-      - ros
     command: [
       "/app/entrypoint_tf.sh",
       "--wait-for-carla",
@@ -12,7 +11,7 @@ services:
   ros:
     depends_on:
       - carla
+      - tf
     command: [
-      "/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh",
-      "ekf_to_zmq:=true"
+      "/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh"
     ]
