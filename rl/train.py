@@ -8,7 +8,7 @@ import tensorflow as tf
 import time
 from datetime import datetime
 import mlflow
-import mlflow.tensorflow
+import zmq
 
 from rl.ppo import PPO
 from rl.run_eval import run_eval
@@ -216,6 +216,13 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
 
         # eval_cont = 0 # conta se chegou no reward desejado N evaluations
 
+        # Create prediction PUB socket
+        context = zmq.Context()
+        pred_socket = context.socket(zmq.PUB)
+        pred_addr = f"tcp://*:5001"
+        pred_socket.bind(pred_addr)
+        print(f"Publishing predictions on {pred_addr}")
+
         # For every episode
         #while num_episodes <= 0 or model.get_episode_idx() < num_episodes:
         while num_episodes <= 0 or simulation.episodio_atual < num_episodes:
@@ -239,7 +246,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 simulation.eval = True
 
                 video_filename = os.path.join(model.video_dir, "episode{}.avi".format(simulation.episodio_atual))
-                eval_reward = run_eval(env, model, video_filename, eval_time, simulation, ego_num)
+                eval_reward = run_eval(env, model, video_filename, eval_time, simulation, ego_num, pred_socket=pred_socket)
                 model.write_value_to_summary("eval/reward", eval_reward, simulation.episodio_atual)
                 # goal_cont = 0
 
@@ -310,6 +317,10 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
                     action, value = model.predict(state, write_to_summary=True)
 
+                    # Convert action to CARLA format
+                    prediction = env.network_to_carla(action)
+                    pred_socket.send_json({"prediction": prediction})
+
                     # Perform action
                     #new_state_lst, reward_lst, terminal_state_lst = [], [], []
                     #for action, vehicle, veh_num in zip(action_lst,simulation.ego_vehicle, enumerate(simulation.ego_vehicle)):  # Roda N vezes, para N veículos simulados
@@ -317,6 +328,10 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #new_state_lst.append(new_state)
                     #reward_lst.append(reward)
                     #terminal_state_lst.append(terminal_state)
+
+                    gt = simulation.ego_vehicle[current_veh].get_location()
+                    print(f"Ground truth: {gt.x:.2f}, {gt.y:.2f}")
+                    print(f"Prediction: {prediction[0]:.2f}, {prediction[1]:.2f}")
 
                     total_reward += reward
                     #total_reward += np.mean(np.array(reward))

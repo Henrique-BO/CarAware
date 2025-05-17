@@ -13,6 +13,6 @@ services:
     depends_on:
       - carla
     command: [
-      "/root/carla_ws/src/CarAware/entrypoint_ros.sh",
+      "/root/carla_ws/src/CarAware/entrypoint_ros_carla.sh",
       "ekf_to_zmq:=true"
     ]

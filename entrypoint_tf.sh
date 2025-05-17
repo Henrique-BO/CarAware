@@ -38,7 +38,7 @@ fi
 
 if $RUN_MODEL_SERVER; then
     echo "[TF Entrypoint] Launching model server with model: $MODEL_PATH"
-    python3 ros/caraware_ros/serve_model.py --model "$MODEL_PATH" 2>&1 | sed 's/^/[Model Server] /' &
+    python3 rl/serve_model.py --model "$MODEL_PATH" 2>&1 | sed 's/^/[Model Server] /' &
     MODEL_SERVER_PID=$!
 fi
 

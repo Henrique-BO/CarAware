@@ -17,24 +17,18 @@ def generate_launch_description():
     twist_frame_id = 'twist_frame'
     wheelbase = 2.0
 
-    model_port = 5000
+    obs_port = 5000
+    pred_port = 5001
+    reset_port = 5002
     model_rate = 50.0
     model_frame_id = 'model_frame'
 
-    ekf_port = 5001
-    reset_port = 5002
-
-    model_node_arg = DeclareLaunchArgument(
-        'model_node',
+    plot_error_arg = DeclareLaunchArgument(
+        'plot_error',
         default_value='false',
-        description='Enable or disable model node'
+        description='Plot error in the model node'
     )
-
-    ekf_to_zmq_arg = DeclareLaunchArgument(
-        'ekf_to_zmq',
-        default_value='false',
-        description='Enable or disable EKF to ZMQ communication'
-    )
+    plot_error = LaunchConfiguration('plot_error')
 
     carla_ros_bridge_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -72,10 +66,10 @@ def generate_launch_description():
         name='carla_republisher',
         output='screen',
         parameters=[
-            {'use_sim_time': True},
             {'imu_frame_id': imu_frame_id},
             {'twist_frame_id': twist_frame_id},
-            {'wheelbase': wheelbase}
+            {'wheelbase': wheelbase},
+            {'use_sim_time': True}
         ],
         remappings=[
             ('/imu/data_in', '/carla/EGO_1/IMU'),
@@ -124,13 +118,16 @@ def generate_launch_description():
     model_node = Node(
         package='caraware_ros',
         executable='model_node',
-        name='model_node',
+        name='model_bridge',
         output='screen',
         parameters=[
-            {'use_sim_time': True},
-            {'model_port': model_port},
+            {'obs_port': obs_port},
+            {'pred_port': pred_port},
+            {'reset_port': reset_port},
             {'frame_id': model_frame_id},
-            {'publish_rate': model_rate}
+            {'publish_rate': model_rate},
+            {'plot_error': plot_error},
+            {'use_sim_time': True}
         ],
         remappings=[
             ('/imu/data', '/imu/data'),
@@ -138,23 +135,6 @@ def generate_launch_description():
             ('/odometry/filtered', '/odometry/filtered'),
             ('/model/prediction', '/model/prediction')
         ],
-        condition=IfCondition(LaunchConfiguration('model_node'))
-    )
-
-    ekf_to_zmq = Node(
-        package='caraware_ros',
-        executable='ekf_to_zmq',
-        name='ekf_to_zmq',
-        output='screen',
-        parameters=[
-            {'use_sim_time': True},
-            {'ekf_port': ekf_port},
-            {'reset_port': reset_port}
-        ],
-        remappings=[
-            ('/odometry/filtered', '/odometry/filtered')
-        ],
-        condition=IfCondition(LaunchConfiguration('ekf_to_zmq'))
     )
 
     rviz = Node(
@@ -170,8 +150,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        model_node_arg,
-        ekf_to_zmq_arg,
+        plot_error_arg,
         carla_ros_bridge_launch,
         base_to_imu,
         base_to_speed_sas,
@@ -179,6 +158,5 @@ def generate_launch_description():
         calculate_map_to_odom,
         robot_localization_ekf,
         model_node,
-        ekf_to_zmq,
         rviz,
     ])

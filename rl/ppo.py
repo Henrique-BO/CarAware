@@ -2,6 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import mlflow
 
 from tensorflow.core.framework import summary_pb2
 from rl.utils import build_mlp, create_counter_variable, create_mean_metrics_from_dict
@@ -291,6 +292,7 @@ class PPO():
         summary = tf.Summary()
         summary.value.add(tag=summary_name, simple_value=value)
         self.train_writer.add_summary(summary, step)
+        mlflow.log_metric(summary_name, value, step=step)
 
     def write_dict_to_summary(self, summary_name, params, step):
         summary_op = tf.summary.text(summary_name, tf.stack([tf.convert_to_tensor([k, str(v)]) for k, v in params.items()]))

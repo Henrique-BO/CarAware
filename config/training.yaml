@@ -1,4 +1,4 @@
-model_name: "PPO_7"  # Modelo a ser utilizado
+model_name: "PPO_EKF_3"  # Modelo a ser utilizado
 restart: true  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
@@ -15,7 +15,7 @@ hyperparameters:
   target_std: 0.4  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
   value_scale: 1.0  # Value loss scale factor
   entropy_scale: 0.01  # Entropy loss scale factor - Default: 0.01
-  horizon: 32768  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
+  horizon: 100  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
   num_training: 1  # Number of times the model will be trained per episode
   num_epochs: 3  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
   batch_size: 64  # Epoch batch size - Default: 32 / 2048 (funcionou) / 8192
@@ -26,6 +26,6 @@ hyperparameters:
                           # with this option in our experience)
   eval_interval: 5  # Number of episodes interval between evaluations - Default: 5
   # save_eval_interval: 10  # Number of evaluations interval for saving (in addition to best rw)
-  eval_time: 40  # Tempo que a simulação irá rodar para avaliação - Default: 60
+  eval_time: 30  # Tempo que a simulação irá rodar para avaliação - Default: 60
   record_eval: True  # If True, save' videos of evaluation episodes to models/model_name/videos/
   # reset_mode: 5 # Usado em conjunto com restart, define se reinicia sempre ou só target

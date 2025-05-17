@@ -1,64 +1,31 @@
 import numpy as np
-import socket
-import json
+import zmq
+import threading
+import time
 
-def test_socket_connection():
-    # Connect to the server
-    host = 'localhost'
-    port = 5000
+def read_observations():
+    while True:
+        try:
+            data = socket.recv_json(flags=zmq.NOBLOCK)
+            observations = data["observations"]
 
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((host, port))
-        print(f"Connected to server at {host}:{port}")
-
-        # # Example request to compute localization error
-        # request = {
-        #     "get_error": True,
-        #     "duration": 5  # Duration in seconds
-        # }
-        # client_socket.send(json.dumps(request).encode("utf-8"))
-        # response = client_socket.recv(1024).decode("utf-8")
-        # print("Response from server:", json.loads(response))
-
-        # Example request to update process noise covariance
-        Q = [[0.5,   0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.5,   0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.6,   0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.03,   0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.03,   0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.06,   0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.025,   0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.025,   0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.04,   0.0,    0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.01,   0.0,    0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.01,   0.0,    0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.02,   0.0,    0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.01,   0.0,    0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.01,   0.0],
-             [0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.0,     0.0,     0.0,    0.0,    0.0,    0.0,    0.0,    0.0,    0.015]]
-        request = {
-            "update_Q": True,
-            "Q": Q
-        }
-        client_socket.send(json.dumps(request).encode("utf-8"))
-        response = client_socket.recv(1024).decode("utf-8")
-        print("Response from server:", json.loads(response))
-
-        # Example request to compute localization error
-        request = {
-            "get_error": True,
-            "duration": 5  # Duration in seconds
-        }
-        client_socket.send(json.dumps(request).encode("utf-8"))
-        response = client_socket.recv(1024).decode("utf-8")
-        print("Response from server:", json.loads(response))
-
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        client_socket.close()
-        print("Connection closed")
+            assert isinstance(observations, list), "Observations should be a list"
+            print(f"Observations: {observations}")
+        except zmq.Again:
+            pass
+        except Exception as e:
+            print(f"Error reading ZMQ data: {e}")
 
 if __name__ == "__main__":
-    test_socket_connection()
+    # Connect to the server
+    context = zmq.Context()
+    socket = context.socket(zmq.SUB)
+    addr = "tcp://localhost:5000"  # Update to match the observation stream port
+    socket.connect(addr)
+    socket.setsockopt_string(zmq.SUBSCRIBE, "")  # Subscribe to all messages
+    obs_thread = threading.Thread(target=read_observations, daemon=True)
+    obs_thread.start()
+    print(f"Connected to observation stream on {addr}")
+
+    while True:
+        time.sleep(1)

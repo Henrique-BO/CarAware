@@ -5,6 +5,8 @@ from gym.utils import seeding
 import reward_functions as reward_functions
 import math
 import numpy as np
+import zmq
+import threading
 
 
 # TODO:
@@ -103,17 +105,27 @@ class CarlaEnv(gym.Env):
         self.synchronous = synchronous
         self.seed()
 
+        # Read observation stream from ZMQ SUB socket
+        self._observations = None
+        self.new_observations = False
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.SUB)
+        self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.obs_addr = "tcp://localhost:5000"
+        self.socket.connect(self.obs_addr)
+        self.obs_thread = threading.Thread(target=self.read_observation_stream, daemon=True)
+        self.obs_thread.start()
 
         if not last_positions_training:
             # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            # obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-            # obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
             # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
             # accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
-            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+            # obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+            # obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 
             # Configura vetor unitário de entrada dos espaços de observação e ação - SMALL
             # GNSS_X, GNSS_Y, compass, speed, stw_angle
@@ -167,10 +179,11 @@ class CarlaEnv(gym.Env):
             # Valores reais em formato de vetor
             # OBS COMPLETO
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            # GNSS_X, GNSS_Y, compass, speed, stw_angle
-            self.vetor_obs_low = [-15, 90, -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180]
-            self.vetor_obs_high = [210, 310, 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180]
+            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180]
+            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180]
+
             # OBS SMALL
+            # GNSS_X, GNSS_Y, compass, speed, stw_angle
             #self.vetor_obs_low = [-15, 90, 0, 0, 0]
             #self.vetor_obs_high = [210, 310, 360, 100, 360]  # 10 = ego_num-1
         else:
@@ -228,8 +241,7 @@ class CarlaEnv(gym.Env):
         initial_reward = 0
         #initial_state = [0, 0, 0, 0, 0]  # Small
         if not self.last_positions_training:
-            # initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+            initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         else:  # Treinando com últimas posições
             initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         #state_lst = []
@@ -257,17 +269,15 @@ class CarlaEnv(gym.Env):
         # Garante que os dados são válidos para servirem de input pra rede neural
         if veh is not None:
             while True:
-                input_invalido = 0
-                self._get_observation(veh, veh_num)  # get most recent observations  - , single_veh)
-                if self.observation is None:
-                    input_invalido +=1
-                else:
+                # self._get_observation(veh, veh_num)  # get most recent observations  - , single_veh)
+                if self.new_observations:
+                    input_valido = True
                     for obs in self.observation:
                         if obs is None or math.isnan(obs):
-                            input_invalido += 1
-                            #print("Input Invalido")
+                            input_valido = False
                             break
-                    if input_invalido == 0:
+                    if input_valido:
+                        self.new_observations = False
                         break
 
         # Call external reward fn
@@ -295,9 +305,29 @@ class CarlaEnv(gym.Env):
 
        # Transforma a lista de listas em um vetor de X por 1
 
+    def read_observation_stream(self):
+        """
+        Continuously read the observation stream from the ZMQ SUB socket.
+        """
+        print(f"Listening for observations on {self.obs_addr}")
+        while True:
+            try:
+                data = self.socket.recv_json(flags=zmq.NOBLOCK)
+                self.observation = data["observations"]
+                assert isinstance(self.observation, list), "Observations should be a list"
+                assert len(self.observation) == self.observation_space.shape[0], \
+                    f"Expected {self.observation_space.shape[0]} observations, got {len(self.observation)}"
+                self.new_observations = True
+            except zmq.Again:
+                pass
+            except Exception as e:
+                print(f"Error reading ZMQ observation stream: {e}")
 
     def _get_observation(self, veh, veh_num):  # ,single_veh)
 
+        # if not self.new_observations or not self._observations:
+        #     print("No new observations or observations are None")
+        #     return False
         #self.observation = {"GNSS": []}
         observation = []
         #for vehicle, idx in zip(self._simulation.ego_vehicle, range(len(self._simulation.ego_vehicle))):
@@ -309,7 +339,7 @@ class CarlaEnv(gym.Env):
         #else:
             #veh_idx = veh_num
         try:
-            if veh.sens_gnss_input is not None:
+            if veh.sens_gnss_input is not None and self._ekf_data is not None:
                 if not self.last_positions_training:
                     #COMPLETO
                     # observation.append([veh.sens_gnss_input.x, veh.sens_gnss_input.y, veh.sens_imu.ue_accelerometer[0],
@@ -317,11 +347,8 @@ class CarlaEnv(gym.Env):
                     #                     veh.sens_imu.ue_gyroscope[0], veh.sens_imu.ue_gyroscope[1],
                     #                     veh.sens_imu.ue_gyroscope[2], veh.sens_imu.ue_compass_degrees,
                     #                     veh.sens_spd_sas_speed, veh.sens_spd_sas_angle])
-                    observation.append([veh.sens_imu.ue_accelerometer[0],
-                                        veh.sens_imu.ue_accelerometer[1], veh.sens_imu.ue_accelerometer[2],
-                                        veh.sens_imu.ue_gyroscope[0], veh.sens_imu.ue_gyroscope[1],
-                                        veh.sens_imu.ue_gyroscope[2], veh.sens_imu.ue_compass_degrees,
-                                        veh.sens_spd_sas_speed, veh.sens_spd_sas_angle])
+                    self.observation = self._observations
+
                     #SMALL
                     #observation.append([veh.sens_gnss_input.x, veh.sens_gnss_input.y, veh.sens_imu.ue_compass_degrees,
                     #                    veh.sens_spd_sas_speed, veh.sens_spd_sas_angle])
@@ -344,18 +371,21 @@ class CarlaEnv(gym.Env):
 
             else:
                 if not self.last_positions_training:
-                    # observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
-                    observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
+                    observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
+                    # observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
                     #observation.append([[0, 0, 0, 0, 0]])  # SMALL
                 else:
                     observation.append([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # COMPLETO
 
             # self.observation = observation
             # print("observation: ", observation)
-            self.observation = self.carla_to_network(observation[0])
+            # self.observation = self.carla_to_network(observation[0])
+            self.new_observations = False
+            return True
         except:
             #print("Falha Sensores")
             self.observation = None
+            return False
 
 
     def carla_to_network(self, data):  # comprime observação para espaço de -1 a 1
