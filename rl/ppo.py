@@ -14,7 +14,7 @@ class PolicyGraph():
 
     def __init__(self, input_states, taken_actions, action_space, scope_name,
                  initial_std=0.4, initial_mean_factor=0.1,
-                 pi_hidden_sizes=(500, 300), vf_hidden_sizes=(500, 300)):
+                 pi_hidden_sizes=(128, 64), vf_hidden_sizes=(128, 64)):
         """
             input_states [batch_size, width, height, depth]:
                 Input images to predict actions for
@@ -51,7 +51,7 @@ class PolicyGraph():
             if vf_hidden_sizes is None:
                 self.vf = self.pi # Share features if None
             else:
-                self.vf = build_mlp(input_states, hidden_sizes=vf_hidden_sizes, activation=tf.nn.relu, output_activation=tf.nn.relu)
+                self.vf = build_mlp(input_states, hidden_sizes=vf_hidden_sizes, activation=tf.nn.relu, output_activation=None)
             self.value = tf.squeeze(tf.layers.dense(self.vf, 1, activation=None, name="value"), axis=-1)
 
             # Create graph for sampling actions

@@ -330,8 +330,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #terminal_state_lst.append(terminal_state)
 
                     gt = simulation.ego_vehicle[current_veh].get_location()
-                    print(f"Ground truth: {gt.x:.2f}, {gt.y:.2f}")
-                    print(f"Prediction: {prediction[0]:.2f}, {prediction[1]:.2f}")
+                    # print(f"Ground truth: {gt.x:.2f}, {gt.y:.2f}")
+                    # print(f"Prediction: {prediction[0]:.2f}, {prediction[1]:.2f}")
 
                     total_reward += reward
                     #total_reward += np.mean(np.array(reward))
@@ -436,8 +436,6 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     csv_writer.writerow([str(simulation.episodio_atual), datetime.date(datetime.now()),
                                         datetime.now().strftime("%H:%M:%S"), simulation.sim_total_time, "Episode", 999, 999])
 
-                mlflow.log_metric("total_reward", total_reward, step=episode_idx)
-                mlflow.log_metric("distance", env.distance, step=episode_idx)
                 mlflow.log_metric("std", model.current_std, step=episode_idx)
 
                 # Finaliza simulação baseado no valor desejado de desvio padrão

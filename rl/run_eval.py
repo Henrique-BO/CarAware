@@ -133,8 +133,8 @@ def run_eval(env, model, video_filename=None, eval_time=20, simulation=None, ego
         # Calcula distância prediction KF para GT
         veh_gt = env._top_view.world.gt_input_ego
 
-        print(f"Ground truth: ({veh_gt[current_veh].x:.2f}, {veh_gt[current_veh].y:.2f})")
-        print(f"Prediction: ({prediction[0]:.2f}, {prediction[1]:.2f})")
+        # print(f"Ground truth: ({veh_gt[current_veh].x:.2f}, {veh_gt[current_veh].y:.2f})")
+        # print(f"Prediction: ({prediction[0]:.2f}, {prediction[1]:.2f})")
 
         try:
             distance_kf[current_veh] = np.sqrt((prediction[0] - veh_gt[current_veh].x) ** 2 + (

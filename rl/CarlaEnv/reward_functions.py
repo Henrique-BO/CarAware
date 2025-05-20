@@ -31,6 +31,9 @@ def calculate_reward(env, reward_fn, last_reward = None, last_distance_lst = Non
 
         #reward = reward/env.ego_num (verificar se faz sentido trabalhar com a média pra vários veículos
 
+    if reward_fn == "rw_negative_distance":
+        reward, distance = rw_negative_distance(env, veh, veh_num)
+
     return reward, distance
 
 
@@ -155,5 +158,17 @@ def rw_distance_normalized(env, veh, veh_num):
         #distance_lst.append(0)
 
     #total_reward = sum(reward_lst)/env.ego_num
+
+    return reward, distance
+
+def rw_negative_distance(env, veh, veh_num):
+    try:
+        veh_gt = env._top_view.world.gt_input_ego
+        distance = np.sqrt((veh.prediction[0] - veh_gt[veh_num].x) ** 2 + (
+                veh.prediction[1] - veh_gt[veh_num].y) ** 2)
+        reward = -distance
+    except:
+        reward = 0
+        distance = 0
 
     return reward, distance
