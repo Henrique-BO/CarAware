@@ -18,7 +18,7 @@ from std_srvs.srv import Trigger
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
 IMU_TOPIC = '/imu/data'
-ACKERMANN_TOPIC = '/carla/EGO_1/Speed_SAS'
+ACKERMANN_TOPIC = '/ackermann_drive'
 ODOMETRY_TOPIC = '/odometry/filtered'
 
 OUTPUT_TOPIC = '/model/prediction'
@@ -149,7 +149,7 @@ class ModelNode(Node):
         """
         if self.imu_data is None or self.ack_data is None or \
             self.ekf_position is None or self.base_link_orientation is None:
-            self.get_logger().warn("Waiting for data...")
+            # self.get_logger().warn("Waiting for data...")
             return
 
         # Prepare input data for the model

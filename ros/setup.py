@@ -24,7 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'model_node = caraware_ros.model_node:main',
-            'vesc_to_ackermann = caraware_ros.vesc_to_ackermann:main',
+            'vesc_republisher = caraware_ros.vesc_republisher:main',
             'carla_republisher = caraware_ros.carla_republisher:main',
             'ekf_to_zmq = caraware_ros.ekf_to_zmq:main',
         ],

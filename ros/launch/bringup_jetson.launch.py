@@ -6,6 +6,9 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
+    # Parameters
+    wheelbase = 0.2  # meters
+
     imu_bringup_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
             os.path.join(
@@ -26,11 +29,33 @@ def generate_launch_description():
         )
     )
 
-    vesc_to_ackermann = Node(
+    vesc_republisher = Node(
         package='caraware_ros',
-        executable='vesc_to_ackermann',
-        name='vesc_to_ackermann',
-        output='screen'
+        executable='vesc_republisher',
+        name='vesc_republisher',
+        output='screen',
+        parameters=[
+            {'wheelbase': wheelbase},
+        ]
+    )
+
+    robot_localization_ekf = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[
+            os.path.join(
+                get_package_share_directory('caraware_ros'),
+                'config',
+                'ekf.yaml'
+            ),
+            {'use_sim_time': True}
+        ],
+        remappings=[
+            ('/imu/data', '/imu/data'),
+            ('/twist', '/twist'),
+        ]
     )
 
     model_node = Node(
@@ -48,9 +73,22 @@ def generate_launch_description():
         ]
     )
 
+    motor_controller = Node(
+        package='quark_motor_control',
+        executable='motor_controller',
+        name='motor_controller',
+        output='screen',
+        parameters=[
+        ],
+        remappings=[
+        ]
+    )
+
     return LaunchDescription([
         imu_bringup_launch,
         motor_bringup_launch,
-        vesc_to_ackermann,
+        vesc_republisher,
+        robot_localization_ekf,
         model_node,
+        motor_controller,
     ])
