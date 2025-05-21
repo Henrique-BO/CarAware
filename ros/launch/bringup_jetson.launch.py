@@ -1,13 +1,24 @@
+import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
-import os
 
 def generate_launch_description():
-    # Parameters
+    # Vehicle parameters
+    speed_to_erpm_gain = 4000.0  # Conversion factor from speed to erpm
+    speed_to_erpm_offset = 0.0  # Offset for speed to erpm conversion
+    steering_angle_to_servo_gain = 1.0  # Conversion factor from steering angle to servo position
+    steering_angle_to_servo_offset = 0.0  # Offset for steering angle to servo position
     wheelbase = 0.2  # meters
+
+    # Model bridge parameters
+    obs_port = 5000
+    pred_port = 5001
+    reset_port = 5002
+    model_rate = 50.0
+    model_frame_id = 'model_frame'
 
     imu_bringup_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
@@ -35,6 +46,10 @@ def generate_launch_description():
         name='vesc_republisher',
         output='screen',
         parameters=[
+            {'speed_to_erpm_gain': speed_to_erpm_gain},
+            {'speed_to_erpm_offset': speed_to_erpm_offset},
+            {'steering_angle_to_servo_gain': steering_angle_to_servo_gain},
+            {'steering_angle_to_servo_offset': steering_angle_to_servo_offset},
             {'wheelbase': wheelbase},
         ]
     )
@@ -58,19 +73,45 @@ def generate_launch_description():
         ]
     )
 
-    model_node = Node(
-        package='caraware_ros',
-        executable='model_node',
-        name='model_node',
+    robot_localization_ekf = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
         output='screen',
         parameters=[
-            {'imu_topic': '/imu/data'},
-            {'ackermann_topic': '/ackermann_drive'},
-            {'publish_rate': 50.0}
+            os.path.join(
+                get_package_share_directory('caraware_ros'),
+                'config',
+                'ekf.yaml'
+            ),
+            {'use_sim_time': True}
         ],
         remappings=[
-            ('vehicle_pose', '/model/vehicle_pose')
+            ('/imu/data', '/imu/data'),
+            ('/twist', '/speed_sas/twist'),
         ]
+    )
+
+    model_bridge = Node(
+        package='caraware_ros',
+        executable='model_bridge',
+        name='model_bridge',
+        output='screen',
+        parameters=[
+            {'obs_port': obs_port},
+            {'pred_port': pred_port},
+            {'reset_port': reset_port},
+            {'frame_id': model_frame_id},
+            {'publish_rate': model_rate},
+            {'plot_error': False},
+            {'use_sim_time': True}
+        ],
+        remappings=[
+            ('/imu/data', '/imu/data'),
+            ('/speed_sas/ackermann', '/carla/EGO_1/Speed_SAS'),
+            ('/odometry/filtered', '/odometry/filtered'),
+            ('/model/prediction', '/model/prediction')
+        ],
     )
 
     motor_controller = Node(
@@ -89,6 +130,6 @@ def generate_launch_description():
         motor_bringup_launch,
         vesc_republisher,
         robot_localization_ekf,
-        model_node,
+        model_bridge,
         motor_controller,
     ])

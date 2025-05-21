@@ -115,9 +115,9 @@ def generate_launch_description():
         ]
     )
 
-    model_node = Node(
+    model_bridge = Node(
         package='caraware_ros',
-        executable='model_node',
+        executable='model_bridge',
         name='model_bridge',
         output='screen',
         parameters=[
@@ -157,6 +157,6 @@ def generate_launch_description():
         carla_republisher,
         calculate_map_to_odom,
         robot_localization_ekf,
-        model_node,
+        model_bridge,
         rviz,
     ])

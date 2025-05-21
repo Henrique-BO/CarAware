@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'model_node = caraware_ros.model_node:main',
+            'model_bridge = caraware_ros.model_bridge:main',
             'vesc_republisher = caraware_ros.vesc_republisher:main',
             'carla_republisher = caraware_ros.carla_republisher:main',
             'ekf_to_zmq = caraware_ros.ekf_to_zmq:main',

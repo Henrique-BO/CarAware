@@ -23,9 +23,9 @@ ODOMETRY_TOPIC = '/odometry/filtered'
 
 OUTPUT_TOPIC = '/model/prediction'
 
-class ModelNode(Node):
+class ModelBridge(Node):
     def __init__(self):
-        super().__init__('model_node')
+        super().__init__('model_bridge')
 
         # Declare ROS 2 parameters
         self.declare_parameter('obs_port', 5000)
@@ -317,13 +317,13 @@ class ModelNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    model_node = ModelNode()
+    model_bridge = ModelBridge()
     try:
-        rclpy.spin(model_node)
+        rclpy.spin(model_bridge)
     except KeyboardInterrupt:
-        model_node.get_logger().info('Shutting down node...')
+        model_bridge.get_logger().info('Shutting down node...')
     finally:
-        model_node.destroy_node()
+        model_bridge.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':
