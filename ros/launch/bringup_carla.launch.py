@@ -131,7 +131,7 @@ def generate_launch_description():
         ],
         remappings=[
             ('/imu/data', '/imu/data'),
-            ('/speed_sas/ackermann', '/carla/EGO_1/Speed_SAS'),
+            ('/ackermann_drive', '/carla/EGO_1/Speed_SAS'),
             ('/odometry/filtered', '/odometry/filtered'),
             ('/model/prediction', '/model/prediction')
         ],

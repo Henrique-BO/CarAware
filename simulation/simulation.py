@@ -381,15 +381,15 @@ class SimulationSetup:
         self.vehicles_list = []
         self.ego_vehicle = []
         self.props_list = []
-        #self.simulation_reset = False
+        self.simulation_reset = True
 
         # LIMPA O STACK DE IMAGENS
         if self.sens_rgb:
             self.stacked_frames = deque([np.zeros((84, 84), dtype=np.int32) for i in range(self.sens_rgb_stack_size)], maxlen=4)
 
         # REDEFINE OS SPAWN-POINTS E RECARREGA MUNDO SIMULADO
-        #random.shuffle(self.veh_spawn_points)
-        self.load_world()  # carrega o mundo simulado
+        random.shuffle(self.veh_spawn_points)
+        # self.load_world()  # carrega o mundo simulado
         # self.all_actors = self.world.get_actors(self.all_id)
 
         # Change weather conditions
@@ -1053,15 +1053,16 @@ class SimulationSetup:
                 imu_rotation = carla.Rotation(0, 0, 0)
                 imu_transform = carla.Transform(imu_location, imu_rotation)
                 imu_bp.set_attribute("role_name", "IMU")
-                # imu_bp.set_attribute("noise_accel_stddev_x", str(self.sens_imu_accel_error))
-                # imu_bp.set_attribute("noise_accel_stddev_y", str(self.sens_imu_accel_error))
-                # imu_bp.set_attribute("noise_gyro_stddev_x", str(self.sens_imu_gyro_error))
-                # imu_bp.set_attribute("noise_gyro_stddev_y", str(self.sens_imu_gyro_error))
-                # imu_bp.set_attribute("noise_gyro_stddev_z", str(self.sens_imu_gyro_error))
-                # imu_bp.set_attribute("noise_gyro_bias_x", str(self.sens_imu_gyro_bias))
-                # imu_bp.set_attribute("noise_gyro_bias_y", str(self.sens_imu_gyro_bias))
-                # imu_bp.set_attribute("noise_gyro_bias_z", str(self.sens_imu_gyro_bias))
-                # imu_bp.set_attribute("sensor_tick", str(self.sens_imu_sampling))  # Default 3s
+                imu_bp.set_attribute("noise_accel_stddev_x", str(self.sens_imu_accel_error))
+                imu_bp.set_attribute("noise_accel_stddev_y", str(self.sens_imu_accel_error))
+                imu_bp.set_attribute("noise_accel_stddev_z", str(self.sens_imu_accel_error))
+                imu_bp.set_attribute("noise_gyro_stddev_x", str(self.sens_imu_gyro_error))
+                imu_bp.set_attribute("noise_gyro_stddev_y", str(self.sens_imu_gyro_error))
+                imu_bp.set_attribute("noise_gyro_stddev_z", str(self.sens_imu_gyro_error))
+                imu_bp.set_attribute("noise_gyro_bias_x", str(self.sens_imu_gyro_bias))
+                imu_bp.set_attribute("noise_gyro_bias_y", str(self.sens_imu_gyro_bias))
+                imu_bp.set_attribute("noise_gyro_bias_z", str(self.sens_imu_gyro_bias))
+                imu_bp.set_attribute("sensor_tick", str(self.sens_imu_sampling))  # Default 3s
                 ego_imu = self.world.spawn_actor(imu_bp, imu_transform, attach_to=self.ego_vehicle[veh_num],
                                              attachment_type=carla.AttachmentType.Rigid)
                 ego_imu.listen(lambda imu: self.imu_callback(imu, veh_num))

@@ -71,6 +71,7 @@ class PPO():
     """
 
     def __init__(self, input_shape, action_space,
+                 pi_hidden_sizes=(128, 64), vf_hidden_sizes=(128, 64),
                  learning_rate=3e-4, lr_decay=0.998, epsilon=0.2,
                  value_scale=0.5, entropy_scale=0.01, initial_std=0.4,
                  model_dir="./"):
@@ -111,14 +112,32 @@ class PPO():
         self.advantage = tf.placeholder(shape=(None,), dtype=tf.float32, name="advantage_placeholder")
 
         # Create policy graphs
-        self.policy        = PolicyGraph(self.input_states, self.taken_actions, action_space, "policy", initial_std=initial_std)
-        self.policy_old    = PolicyGraph(self.input_states, self.taken_actions, action_space, "policy_old", initial_std=initial_std)
+        self.policy = PolicyGraph(
+            self.input_states,
+            self.taken_actions,
+            action_space,
+            "policy",
+            initial_std=initial_std,
+            pi_hidden_sizes=pi_hidden_sizes,
+            vf_hidden_sizes=vf_hidden_sizes
+        )
+        self.policy_old = PolicyGraph(
+            self.input_states,
+            self.taken_actions,
+            action_space,
+            "policy_old",
+            initial_std=initial_std,
+            pi_hidden_sizes=pi_hidden_sizes,
+            vf_hidden_sizes=vf_hidden_sizes
+        )
 
         # Calculate ratio:
         # r_t(θ) = exp( log   π(a_t | s_t; θ) - log π(a_t | s_t; θ_old)   )
         # r_t(θ) = exp( log ( π(a_t | s_t; θ) /     π(a_t | s_t; θ_old) ) )
         # r_t(θ) = π(a_t | s_t; θ) / π(a_t | s_t; θ_old)
         self.prob_ratio = tf.exp(self.policy.action_log_prob - self.policy_old.action_log_prob)
+        self.clipped = tf.logical_or(self.prob_ratio < 1.0 - epsilon, self.prob_ratio > 1.0 + epsilon)
+        self.clip_frac = tf.reduce_mean(tf.cast(self.clipped, tf.float32))
 
         # Policy loss
         adv = tf.expand_dims(self.advantage, axis=-1)
@@ -232,8 +251,20 @@ class PPO():
                 return False
 
     def train(self, input_states, taken_actions, returns, advantage):
-        _, _, summaries, step_idx = \
-            self.sess.run([self.train_step, self.update_metrics_op, self.stepwise_summaries, self.train_step_counter.var],
+        kl_divergence = tf.reduce_mean(tfp.distributions.kl_divergence(self.policy.action_normal, self.policy_old.action_normal))
+        _, _, summaries, policy_l, value_l, entropy_l, l, kl, clip_ratio, step_idx = \
+            self.sess.run([
+                    self.train_step,
+                    self.update_metrics_op,
+                    self.stepwise_summaries,
+                    self.policy_loss,
+                    self.value_loss,
+                    self.entropy_loss,
+                    self.loss,
+                    kl_divergence,
+                    self.clip_frac,
+                    self.train_step_counter.var
+                ],
                 feed_dict={
                     self.input_states: input_states,
                     self.taken_actions: taken_actions,
@@ -242,6 +273,13 @@ class PPO():
                 }
             )
         #if step_idx % 10 == 0:  # Grava dados a cada 10 steps de treinamento, para reduzir tamanho do log
+
+        self.pl = policy_l
+        self.vl = value_l
+        self.el = entropy_l
+        self.l = l
+        self.kl = kl
+        self.clip = clip_ratio
 
         # salva desvio padrão para lógica que finaliza teste baseado nele
         summ = summary_pb2.Summary()

@@ -4,10 +4,13 @@ import sys
 import numpy as np
 import zmq
 
+from collections import deque
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rl.ppo import PPO
 from rl.CarlaEnv.carla_env import CarlaEnv
 
+HISTORY_LENGTH = 1
 
 def parse_args():
     """
@@ -35,6 +38,12 @@ class ModelServer:
         print("Loading model...")
         self.load_model(self.model_name)
         print("Model loaded successfully.")
+
+        initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.observation_history = deque(maxlen=HISTORY_LENGTH)
+        for _ in range(HISTORY_LENGTH):
+            self.observation_history.append(initial_state)
+        initial_state = np.concatenate(self.observation_history).tolist()
 
         # Set up ZMQ sockets
         context = zmq.Context()
@@ -85,9 +94,12 @@ class ModelServer:
         """
         try:
             observations = np.array(input_data["observations"])
+            observations = self.env.carla_to_network(observations)
+            self.observation_history.append(observations)
+            input_data = np.concatenate(self.observation_history).tolist()
 
             # Predict action
-            prediction, _ = self.model.predict(observations, greedy=True)
+            prediction, _ = self.model.predict(input_data, greedy=True)
             prediction = self.env.network_to_carla(prediction)
 
             # Prepare the response

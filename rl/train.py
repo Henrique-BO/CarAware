@@ -30,6 +30,9 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
     last_positions_training = train_params["last_positions_training"]
 
     hyper_params = train_params["hyperparameters"]
+    pi_hidden_sizes = hyper_params["pi_hidden_sizes"]
+    vf_hidden_sizes = hyper_params["vf_hidden_sizes"]
+    history_length   = hyper_params["history_length"]
     learning_rate    = hyper_params["learning_rate"]
     lr_decay         = hyper_params["lr_decay"]
     discount_factor  = hyper_params["discount_factor"]
@@ -107,7 +110,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     simulation=simulation, top_view=top_view,
                     ego_num=ego_num,
                     map=map,
-                    last_positions_training=last_positions_training)
+                    last_positions_training=last_positions_training,
+                    history_length=history_length)
 
         if isinstance(seed, int):
             env.seed(seed)
@@ -123,6 +127,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
         # Create model
         print("Creating model")
         model = PPO(input_shape, env.action_space,
+                    pi_hidden_sizes=pi_hidden_sizes, vf_hidden_sizes=vf_hidden_sizes,
                     learning_rate=learning_rate, lr_decay=lr_decay,
                     epsilon=ppo_epsilon, initial_std=initial_std,
                     value_scale=value_scale, entropy_scale=entropy_scale,
@@ -329,7 +334,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #reward_lst.append(reward)
                     #terminal_state_lst.append(terminal_state)
 
-                    gt = simulation.ego_vehicle[current_veh].get_location()
+                    # gt = simulation.ego_vehicle[current_veh].get_location()
                     # print(f"Ground truth: {gt.x:.2f}, {gt.y:.2f}")
                     # print(f"Prediction: {prediction[0]:.2f}, {prediction[1]:.2f}")
 
@@ -374,7 +379,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     break
 
                 # Calculate last value (bootstrap value)
-                _, last_values = model.predict(state)  # usa último estado gerado pelo último carro
+                _, last_values = model.predict(state, greedy=True)  # usa último estado gerado pelo último carro
                 #print("last_values: ", last_values)
                 #print("state: ", state)
                 #print("values_ant: ", values)
@@ -382,6 +387,9 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 # Compute GAE
                 advantages = compute_gae(rewards, values, last_values, dones, discount_factor, gae_lambda)
                 returns = advantages + values
+
+                # Normalize
+                returns = (returns - returns.mean()) / (returns.std() + 1e-8)
                 advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
                 # Flatten arrays
@@ -436,7 +444,14 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     csv_writer.writerow([str(simulation.episodio_atual), datetime.date(datetime.now()),
                                         datetime.now().strftime("%H:%M:%S"), simulation.sim_total_time, "Episode", 999, 999])
 
-                mlflow.log_metric("std", model.current_std, step=episode_idx)
+                mlflow.log_metric("train/std", model.current_std, step=episode_idx)
+                mlflow.log_metric("train/policy_loss", model.pl, step=episode_idx)
+                mlflow.log_metric("train/value_loss", model.vl, step=episode_idx)
+                mlflow.log_metric("train/entropy_loss", model.el, step=episode_idx)
+                mlflow.log_metric("train/total_loss", model.l, step=episode_idx)
+                mlflow.log_metric("train/kl_divergence", model.kl, step=episode_idx)
+                # mlflow.log_metric("train/learning_rate", model.learning_rate, step=episode_idx)
+                # mlflow.log_metric("train/episode_reward", total_reward, step=episode_idx)
 
                 # Finaliza simulação baseado no valor desejado de desvio padrão
                 print(model.current_std)

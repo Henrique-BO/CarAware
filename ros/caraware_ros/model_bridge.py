@@ -242,34 +242,14 @@ class ModelBridge(Node):
         Reset the EKF using the current ground truth transform.
         """
         try:
-            # Get the current ground truth transform
-            transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
-            pose = PoseWithCovarianceStamped()
-            pose.header.stamp = self.get_clock().now().to_msg()
-            pose.header.frame_id = 'map'
-            pose.pose.pose.position.x = transform.transform.translation.x
-            pose.pose.pose.position.y = transform.transform.translation.y
-            pose.pose.pose.position.z = transform.transform.translation.z
-            pose.pose.pose.orientation = transform.transform.rotation
-
-            # Use default covariance
-            pose.pose.covariance = [1e-9, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                    0.0, 1e-9, 0.0, 0.0, 0.0, 0.0,
-                                    0.0, 0.0, 1e-9, 0.0, 0.0, 0.0,
-                                    0.0, 0.0, 0.0, 1e-9, 0.0, 0.0,
-                                    0.0, 0.0, 0.0, 0.0, 1e-9, 0.0,
-                                    0.0, 0.0, 0.0, 0.0, 0.0, 1e-9]
-
-            self.get_logger().info(f"Resetting EKF with pose: {pose}")
-
-            # Call the /set_pose service
-            client = self.create_client(SetPose, '/set_pose')
+            # Call the /calculate_map_to_odom service
+            client = self.create_client(Trigger, '/calculate_map_to_odom')
             if not client.wait_for_service(timeout_sec=5.0):
-                self.get_logger().error('SetPose service not available')
+                self.get_logger().error('CalculateMapToOdom service not available')
                 return
 
-            request = SetPose.Request()
-            request.pose = pose
+            self.get_logger().info("Calling /calculate_map_to_odom service to reset EKF")
+            request = Trigger.Request()
             future = client.call_async(request)
             future.add_done_callback(self.set_pose_callback_async)
         except Exception as e:

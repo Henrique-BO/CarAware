@@ -1,4 +1,5 @@
 import time
+from collections import deque
 
 import gym
 from gym.utils import seeding
@@ -7,7 +8,6 @@ import math
 import numpy as np
 import zmq
 import threading
-
 
 # TODO:
 # - Some solution to avoid using the same env instance for training and eval
@@ -46,7 +46,7 @@ class CarlaEnv(gym.Env):
     def __init__(self, host="127.0.0.1", port=2000,
                  reward_fn=None, #encode_state_fn=None,
                  synchronous=False, fps=30, simulation=None, action_smoothing=0.9, top_view = None,
-                 ego_num = 0,map = "",last_positions_training = False): #start_carla=False, viewer_res=(1280, 720), obs_res=(1280, 720),
+                 ego_num = 0,map = "",last_positions_training = False, history_length=1): #start_carla=False, viewer_res=(1280, 720), obs_res=(1280, 720),
         """
             Initializes a gym-like environment that can be used to interact with CARLA.
 
@@ -100,6 +100,7 @@ class CarlaEnv(gym.Env):
         self.reward_fn = reward_fn
         self.observation = []
         self.last_positions_training = last_positions_training
+        self.history_length = history_length
 
         # Setup gym environment
         self.synchronous = synchronous
@@ -116,11 +117,16 @@ class CarlaEnv(gym.Env):
         self.obs_thread = threading.Thread(target=self.read_observation_stream, daemon=True)
         self.obs_thread.start()
 
+        # ZMQ REQ socket for reset requests
+        self.reset_socket = self.context.socket(zmq.REQ)
+        self.reset_addr = "tcp://localhost:5002"  # Ensure this matches the reset_port in model_bridge.py
+        self.reset_socket.connect(self.reset_addr)
+
         if not last_positions_training:
             # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            obs_low = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1] * self.history_length
+            obs_high = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] * self.history_length
 
             # Configura vetor unitário de entrada dos espaços de observação e ação - COMPLETO
             # accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
@@ -174,13 +180,16 @@ class CarlaEnv(gym.Env):
                 self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
                 self.vetor_act_high = [125, 155]  # Coordenadas X,Y
 
+        self.diagonal = np.linalg.norm(np.array(self.vetor_act_high) - np.array(self.vetor_act_low))
 
         if not last_positions_training:
             # Valores reais em formato de vetor
             # OBS COMPLETO
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180]
-            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180]
+            # self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180] * self.history_length
+            # self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180] * self.history_length
+            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0, 0, -180] * self.history_length
+            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 360, 10, 180] * self.history_length
 
             # OBS SMALL
             # GNSS_X, GNSS_Y, compass, speed, stw_angle
@@ -239,11 +248,30 @@ class CarlaEnv(gym.Env):
         self.step_count = 0
         self.is_training = is_training
         initial_reward = 0
+
+
         #initial_state = [0, 0, 0, 0, 0]  # Small
         if not self.last_positions_training:
             initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         else:  # Treinando com últimas posições
             initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
+        # Initialize the observation history filled with zeros
+        self.observation_history = deque(maxlen=self.history_length)
+        for _ in range(self.history_length):
+            self.observation_history.append(initial_state)
+        initial_state = np.concatenate(self.observation_history).tolist()
+
+        # Send reset request via ZMQ
+        try:
+            self.reset_socket.send_json({"command": "reset"})
+            response = self.reset_socket.recv_json()
+            if response.get("status") != "success":
+                raise RuntimeError("Failed to reset EKF: Received negative response from reset service.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to reset EKF: {e}")
+
         #state_lst = []
         #terminal_state = []
         #for veh in range(self.ego_num):
@@ -267,21 +295,24 @@ class CarlaEnv(gym.Env):
         #simulation.ego_vehicle[current_veh].prediction = action  # salva valor para desenhar prediction no Top-View
 
         # Garante que os dados são válidos para servirem de input pra rede neural
-        if veh is not None:
-            while True:
-                # self._get_observation(veh, veh_num)  # get most recent observations  - , single_veh)
-                if self.new_observations:
-                    input_valido = True
-                    for obs in self.observation:
-                        if obs is None or math.isnan(obs):
-                            input_valido = False
-                            break
-                    if input_valido:
-                        self.new_observations = False
+        while True:
+            # self._get_observation(veh, veh_num)  # get most recent observations  - , single_veh)
+            if self.new_observations:
+                self.observation = np.concatenate(self.observation_history).tolist()  # Flatten the deque into a single list
+                assert len(self.observation_history) == self.history_length, \
+                        f"Expected {self.history_length} observations, got {len(self.observation_history)}"
+                input_valido = True
+                for obs in self.observation:
+                    if obs is None or math.isnan(obs):
+                        input_valido = False
                         break
+                if input_valido:
+                    self.new_observations = False
+                    break
 
         # Call external reward fn
         reward, self.distance = reward_functions.calculate_reward(self, self.reward_fn, self.last_reward, self.last_distance, veh, veh_num)
+        reward = reward / self.diagonal  # Normaliza a recompensa pela diagonal do mapa
 
         self.last_reward = reward  # variável usada pra calcular a condição negativa
         self.last_distance = self.distance
@@ -300,7 +331,6 @@ class CarlaEnv(gym.Env):
             self.close()
             self.terminal_state = True
         """
-
         return self.observation, reward, self.terminal_state
 
        # Transforma a lista de listas em um vetor de X por 1
@@ -313,10 +343,12 @@ class CarlaEnv(gym.Env):
         while True:
             try:
                 data = self.socket.recv_json(flags=zmq.NOBLOCK)
-                self.observation = data["observations"]
-                assert isinstance(self.observation, list), "Observations should be a list"
-                assert len(self.observation) == self.observation_space.shape[0], \
-                    f"Expected {self.observation_space.shape[0]} observations, got {len(self.observation)}"
+                observation = data["observations"]
+                assert isinstance(observation, list), "Observations should be a list"
+                assert len(observation) * self.history_length == self.observation_space.shape[0], \
+                    f"Expected {self.observation_space.shape[0] / self.history_length} observations, got {len(observation)}"
+                observation = self.carla_to_network(observation)  # Convert to network format
+                self.observation_history.append(observation)  # Add the new observation to the deque
                 self.new_observations = True
             except zmq.Again:
                 pass
