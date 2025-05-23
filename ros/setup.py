@@ -18,7 +18,7 @@ setup(
     zip_safe=True,
     maintainer='Henrique Barros Oliveira',
     maintainer_email='henrique.barrosoliveira@usp.br',
-    description='Combined launch file for CARLA ROS bridge and model node in sim-test mode.',
+    description='ROS2 package for CarAware',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
@@ -26,7 +26,9 @@ setup(
             'model_bridge = caraware_ros.model_bridge:main',
             'vesc_republisher = caraware_ros.vesc_republisher:main',
             'carla_republisher = caraware_ros.carla_republisher:main',
-            'controller = caraware_ros.controller:main',
+            'goal_controller = caraware_ros.goal_controller:main',
+            'stanley_controller = caraware_ros.stanley_controller:main',
+            'square_planner = caraware_ros.square_planner:main',
         ],
     },
 )

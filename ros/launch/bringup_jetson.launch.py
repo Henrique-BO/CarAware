@@ -20,13 +20,6 @@ def generate_launch_description():
     model_rate = 50.0
     model_frame_id = 'model_frame'
 
-    # Controller parameters
-    controller_frame_id = 'base_link'
-    angular_proportional = 0.4
-    linear_proportional = 1.0
-    max_lin_vel = 0.2  # m/s
-    invert_angular = False
-
     # IMU and VESC parameters
     vesc_frame_id = 'base_link'
     imu_frame_id = 'imu_frame'
@@ -133,27 +126,22 @@ def generate_launch_description():
         ],
     )
 
-    controller_node = Node(
-        package='caraware_ros',
-        executable='controller',
-        name='controller',
+    ackermann_to_vesc = Node(
+        package='vesc_ackermann',
+        executable='ackermann_to_vesc_node',
+        name='ackermann_to_vesc',
         output='screen',
+        namespace='/vesc',
         parameters=[
-            {'frame_id': controller_frame_id},
-            {'angular_proportional': angular_proportional},
-            {'linear_proportional': linear_proportional},
-            {'max_lin_vel': max_lin_vel},
-            {'invert_angular': invert_angular},
             {'speed_to_erpm_gain': speed_to_erpm_gain},
             {'speed_to_erpm_offset': speed_to_erpm_offset},
             {'steering_angle_to_servo_gain': steering_angle_to_servo_gain},
             {'steering_angle_to_servo_offset': steering_angle_to_servo_offset},
-            {'wheelbase': wheelbase},
         ],
         remappings=[
-            ('/goal_pose', '/goal_pose'),
-            ('/vesc/commands/motor/duty_cycle', '/vesc/commands/motor/duty_cycle'),
-            ('/vesc/commands/servo/position', '/vesc/commands/servo/position'),
+            ('/ackermann_cmd', '/ackermann_cmd'),
+            ('commands/motor/speed', '/vesc/commands/motor/speed'),
+            ('commands/servo/position', '/vesc/commands/servo/position'),
         ]
     )
 
@@ -164,5 +152,5 @@ def generate_launch_description():
         vesc_republisher,
         robot_localization_ekf,
         model_bridge,
-        controller_node,
+        ackermann_to_vesc,
     ])
