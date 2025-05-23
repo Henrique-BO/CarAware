@@ -17,7 +17,7 @@ class VescRepublisher(Node):
         super().__init__('vesc_republisher')
 
         # Declare parameters
-        self.declare_parameter('speed_to_erpm_gain', 1.0)
+        self.declare_parameter('speed_to_erpm_gain', 4000.0)
         self.declare_parameter('speed_to_erpm_offset', 0.0)
         self.declare_parameter('steering_angle_to_servo_gain', 1.0)
         self.declare_parameter('steering_angle_to_servo_offset', 0.0)
@@ -48,14 +48,16 @@ class VescRepublisher(Node):
 
     def vesc_callback(self, msg: VescStateStamped):
         self.vesc_speed = msg.state.speed
+        self.publish()
 
     def servo_cmd_callback(self, msg: Float64):
         self.servo_position = msg.data
+        self.publish()
 
     def publish(self):
         speed = (self.vesc_speed - self.speed_to_erpm_offset) / self.speed_to_erpm_gain
         steering_angle = (self.servo_position - self.steering_angle_to_servo_offset) / self.steering_angle_to_servo_gain
-        stamp = rclpy.time.Time().now().to_msg()
+        stamp = self.get_clock().now().to_msg()
 
         ackermann_msg = AckermannDriveStamped()
         ackermann_msg.header.stamp = stamp

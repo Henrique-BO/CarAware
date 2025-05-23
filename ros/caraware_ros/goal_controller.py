@@ -1,11 +1,12 @@
+import numpy as np
 import math
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64
 from tf2_ros import Buffer, TransformListener
 from ackermann_msgs.msg import AckermannDriveStamped
+from tf2_geometry_msgs import do_transform_pose
 
 class GoalController(Node):
     def __init__(self):
@@ -16,12 +17,16 @@ class GoalController(Node):
         self.declare_parameter('angular_proportional', 0.4)
         self.declare_parameter('linear_proportional', 1.0)
         self.declare_parameter('max_lin_vel', 0.2) # m/s
+        self.declare_parameter('invert_angular', False)
+        self.declare_parameter('threshold', 0.1)
 
         # Get parameters
         self.frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
         self.angular_proportional = self.get_parameter('angular_proportional').get_parameter_value().double_value
         self.linear_proportional = self.get_parameter('linear_proportional').get_parameter_value().double_value
         self.max_lin_vel = self.get_parameter('max_lin_vel').get_parameter_value().double_value
+        self.invert_angular = self.get_parameter('invert_angular').get_parameter_value().bool_value
+        self.threshold = self.get_parameter('threshold').get_parameter_value().double_value
 
         # Subscribers
         self.goal_sub = self.create_subscription(
@@ -35,20 +40,33 @@ class GoalController(Node):
 
         self.goal = PoseStamped()
         self.odom_msg = Odometry()
+        self.reached = False
 
         self.timer = self.create_timer(0.5, self.spin)
         self.get_logger().info('Ready to follow goal')
 
+
     def goal_callback(self, goal_msg: PoseStamped):
         try:
-            goal_msg.header.stamp = rclpy.time.Time().to_msg()
-            self.goal = self.buffer.transform(goal_msg, self.frame_id)
+            goal_msg.header.stamp = self.get_clock().now().to_msg()
+            transform = self.buffer.lookup_transform(
+                self.frame_id,
+                goal_msg.header.frame_id,
+                rclpy.time.Time())
+            self.goal.pose = do_transform_pose(goal_msg.pose, transform)
+            self.reached = False
         except Exception as e:
             self.get_logger().warn(f"Transform failed: {e}")
 
     def spin(self):
         delta_x = self.goal.pose.position.x
         delta_y = self.goal.pose.position.y
+
+        if np.linalg.norm([delta_x, delta_y]) < self.threshold:
+            if not self.reached:
+                self.get_logger().info("Goal reached")
+                self.reached = True
+            return
 
         distance = math.sqrt(delta_x**2 + delta_y**2)
         theta = math.atan2(delta_y, delta_x)
@@ -68,6 +86,8 @@ class GoalController(Node):
         ackermann_msg.drive.steering_angle = angular_action
 
         self.ackermann_pub.publish(ackermann_msg)
+
+        self.get_logger().info(f"Publishing: speed={linear_action}, steering_angle={angular_action}")
 
 
 def main(args=None):

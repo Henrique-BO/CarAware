@@ -29,6 +29,7 @@ setup(
             'goal_controller = caraware_ros.goal_controller:main',
             'stanley_controller = caraware_ros.stanley_controller:main',
             'square_planner = caraware_ros.square_planner:main',
+            'ackermann_to_vesc = caraware_ros.ackermann_to_vesc:main',
         ],
     },
 )
