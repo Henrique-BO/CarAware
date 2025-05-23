@@ -20,6 +20,24 @@ def generate_launch_description():
     model_rate = 50.0
     model_frame_id = 'model_frame'
 
+    # Controller parameters
+    controller_frame_id = 'base_link'
+    angular_proportional = 0.4
+    linear_proportional = 1.0
+    max_lin_vel = 0.2  # m/s
+    invert_angular = False
+
+    # IMU and VESC parameters
+    vesc_frame_id = 'base_link'
+    imu_frame_id = 'imu_frame'
+
+    # -90 degrees rotation around the Z-axis
+    base_to_imu = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0', '0', '0', '0', '0', '-0.7071', '0.7071', 'base_link', imu_frame_id]
+    )
+
     imu_bringup_launch = IncludeLaunchDescription(
         AnyLaunchDescriptionSource(
             os.path.join(
@@ -51,6 +69,7 @@ def generate_launch_description():
             {'steering_angle_to_servo_gain': steering_angle_to_servo_gain},
             {'steering_angle_to_servo_offset': steering_angle_to_servo_offset},
             {'wheelbase': wheelbase},
+            {'frame_id': vesc_frame_id},
         ]
     )
 
@@ -114,22 +133,36 @@ def generate_launch_description():
         ],
     )
 
-    motor_controller = Node(
-        package='quark_motor_control',
-        executable='motor_controller',
-        name='motor_controller',
+    controller_node = Node(
+        package='caraware_ros',
+        executable='controller',
+        name='controller',
         output='screen',
         parameters=[
+            {'frame_id': controller_frame_id},
+            {'angular_proportional': angular_proportional},
+            {'linear_proportional': linear_proportional},
+            {'max_lin_vel': max_lin_vel},
+            {'invert_angular': invert_angular},
+            {'speed_to_erpm_gain': speed_to_erpm_gain},
+            {'speed_to_erpm_offset': speed_to_erpm_offset},
+            {'steering_angle_to_servo_gain': steering_angle_to_servo_gain},
+            {'steering_angle_to_servo_offset': steering_angle_to_servo_offset},
+            {'wheelbase': wheelbase},
         ],
         remappings=[
+            ('/goal_pose', '/goal_pose'),
+            ('/vesc/commands/motor/duty_cycle', '/vesc/commands/motor/duty_cycle'),
+            ('/vesc/commands/servo/position', '/vesc/commands/servo/position'),
         ]
     )
 
     return LaunchDescription([
+        base_to_imu,
         imu_bringup_launch,
         motor_bringup_launch,
         vesc_republisher,
         robot_localization_ekf,
         model_bridge,
-        motor_controller,
+        controller_node,
     ])

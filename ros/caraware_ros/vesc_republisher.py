@@ -22,6 +22,7 @@ class VescRepublisher(Node):
         self.declare_parameter('steering_angle_to_servo_gain', 1.0)
         self.declare_parameter('steering_angle_to_servo_offset', 0.0)
         self.declare_parameter('wheelbase', 0.2)
+        self.declare_parameter('frame_id', 'base_link')
 
         # Get parameters
         self.speed_to_erpm_gain = self.get_parameter('speed_to_erpm_gain').get_parameter_value().double_value
@@ -29,6 +30,7 @@ class VescRepublisher(Node):
         self.steering_angle_to_servo_gain = self.get_parameter('steering_angle_to_servo_gain').get_parameter_value().double_value
         self.steering_angle_to_servo_offset = self.get_parameter('steering_angle_to_servo_offset').get_parameter_value().double_value
         self.wheelbase = self.get_parameter('wheelbase').get_parameter_value().double_value
+        self.frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
 
         # Subscribers
         self.vesc_sub = self.create_subscription(VescStateStamped, VESC_TOPIC_IN, self.vesc_callback, 10)
@@ -57,13 +59,15 @@ class VescRepublisher(Node):
 
         ackermann_msg = AckermannDriveStamped()
         ackermann_msg.header.stamp = stamp
+        ackermann_msg.header.frame_id = self.frame_id
         ackermann_msg.drive.speed = speed
         ackermann_msg.drive.steering_angle = steering_angle
         self.ackermann_pub.publish(ackermann_msg)
 
         twist_msg = TwistWithCovarianceStamped()
         twist_msg.header.stamp = stamp
-        twist_msg.twist.twist.linear.x = msg.state.speed
+        twist_msg.header.frame_id = self.frame_id
+        twist_msg.twist.twist.linear.x = speed
         twist_msg.twist.twist.angular.z = speed / self.wheelbase * np.tan(steering_angle)
         twist_msg.twist.covariance = \
             [0.1**2,0.0, 0.0, 0.0, 0.0, 0.0,

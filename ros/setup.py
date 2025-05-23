@@ -26,7 +26,7 @@ setup(
             'model_bridge = caraware_ros.model_bridge:main',
             'vesc_republisher = caraware_ros.vesc_republisher:main',
             'carla_republisher = caraware_ros.carla_republisher:main',
-            'ekf_to_zmq = caraware_ros.ekf_to_zmq:main',
+            'controller = caraware_ros.controller:main',
         ],
     },
 )

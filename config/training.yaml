@@ -6,8 +6,8 @@ last_positions_training: false  # Passa as últimas 4 posições para a rede no 
 record_play_stats: false  # Grava no Tensorboard as distâncias prediction e kalman
 
 hyperparameters:
-  pi_hidden_sizes: [128, 64]  # Hidden layer sizes for the policy network
-  vf_hidden_sizes: [128, 64]  # Hidden layer sizes for the value network
+  pi_hidden_sizes: [512, 256]  # Hidden layer sizes for the policy network
+  vf_hidden_sizes: [512, 256]  # Hidden layer sizes for the value network
   history_length: 1  # Number of frames to use as input to the model
   learning_rate: 8.0e-5  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
   lr_decay: 1.0  # Per-episode exponential learning rate decay - Default: 1.0 (mantêm constante)
@@ -17,7 +17,7 @@ hyperparameters:
   initial_std: 0.7  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
   target_std: 0.4  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
   value_scale: 0.1  # Value loss scale factor
-  entropy_scale: 0.001  # Entropy loss scale factor - Default: 0.01
+  entropy_scale: 0.01  # Entropy loss scale factor - Default: 0.01
   horizon: 1024  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
   num_training: 1  # Number of times the model will be trained per episode
   num_epochs: 3  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4
@@ -25,7 +25,7 @@ hyperparameters:
   synchronous: False  # Set this to True when running in a synchronous environment
   action_smoothing: 0.0  #Action smoothing factor
   reward_fn: "rw_negative_distance"  # Reward Function to use. See reward_functions.py for more info.
-  seed: 0  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
+  seed: 42  # Seed to use. (Note that determinism unfortunately appears to not be guaranteed
                           # with this option in our experience)
   eval_interval: 5  # Number of episodes interval between evaluations - Default: 5
   # save_eval_interval: 10  # Number of evaluations interval for saving (in addition to best rw)

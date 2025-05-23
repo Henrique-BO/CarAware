@@ -48,7 +48,7 @@ def play(train_params, sim_params, simulation, top_view):  # start_carla=True
     if isinstance(seed, int):
         tf.random.set_random_seed(seed)
         np.random.seed(seed)
-        random.seed(0)
+        random.seed(seed)
 
     # Create env
     print("Creating environment")
