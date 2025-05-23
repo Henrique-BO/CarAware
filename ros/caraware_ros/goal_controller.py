@@ -47,29 +47,36 @@ class GoalController(Node):
 
 
     def goal_callback(self, goal_msg: PoseStamped):
-        try:
-            goal_msg.header.stamp = self.get_clock().now().to_msg()
-            transform = self.buffer.lookup_transform(
-                self.frame_id,
-                goal_msg.header.frame_id,
-                rclpy.time.Time())
-            self.goal.pose = do_transform_pose(goal_msg.pose, transform)
-            self.reached = False
-        except Exception as e:
-            self.get_logger().warn(f"Transform failed: {e}")
+        self.goal = goal_msg
+        self.goal.header.stamp = self.get_clock().now().to_msg()
+        self.reached = False
 
     def spin(self):
-        delta_x = self.goal.pose.position.x
-        delta_y = self.goal.pose.position.y
+        try:
+            transform = self.buffer.lookup_transform(
+                self.goal.header.frame_id,
+                self.frame_id,
+                rclpy.time.Time())
+            delta = do_transform_pose(self.goal.pose, transform)
+        except Exception as e:
+            self.get_logger().warn(f"Transform failed: {e}")
+            return
 
-        if np.linalg.norm([delta_x, delta_y]) < self.threshold:
+        delta_x = delta.position.x
+        delta_y = delta.position.y
+        self.get_logger().info(f"Goal position: {delta_x}, {delta_y}")
+
+        distance = math.sqrt(delta_x**2 + delta_y**2)
+        theta = math.atan2(delta_y, delta_x)
+
+        self.get_logger().info(f"Distance: {distance}, Angle: {theta}")
+
+        if distance < self.threshold:
             if not self.reached:
                 self.get_logger().info("Goal reached")
                 self.reached = True
             return
 
-        distance = math.sqrt(delta_x**2 + delta_y**2)
-        theta = math.atan2(delta_y, delta_x)
 
         linear_action = min(abs(self.max_lin_vel), abs(self.linear_proportional * distance))
         if delta_x < 0:

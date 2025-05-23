@@ -12,7 +12,7 @@ def generate_launch_description():
     speed_to_duty_cycle_gain = 1.0  # Conversion factor from speed to erpm
     speed_to_duty_cycle_offset = 0.0  # Offset for speed to erpm conversion
     steering_angle_to_servo_gain = 1.0  # Conversion factor from steering angle to servo position
-    steering_angle_to_servo_offset = 0.0  # Offset for steering angle to servo position
+    steering_angle_to_servo_offset = 0.5  # Offset for steering angle to servo position
     wheelbase = 0.2  # meters
 
     # Model bridge parameters
