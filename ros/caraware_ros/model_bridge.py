@@ -201,11 +201,12 @@ class ModelBridge(Node):
                 # Plot the prediction error in real time
                 try:
                     transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
-                    # gt = np.array([
-                    #     transform.transform.translation.x,
-                    #     transform.transform.translation.y
-                    # ])
-                    gt = np.array([195, -165])  # Center of the map
+                    gt = np.array([
+                        transform.transform.translation.x,
+                        transform.transform.translation.y
+                    ])
+                    # gt = np.array([195, -165])  # Center of the map
+                    # gt = np.array([0, 0])
                     error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
 
                     self.errors.append(error)

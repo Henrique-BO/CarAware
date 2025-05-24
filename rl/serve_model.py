@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import numpy as np
+import yaml
 import zmq
 
 from collections import deque
@@ -81,12 +82,22 @@ class ModelServer:
         """
         Load the trained PPO model.
         """
+        model_dir = os.path.join("models", model_name)
+        with open(os.path.join(model_dir, "training.yaml"), 'r') as file:
+            train_params = yaml.safe_load(file)
+
+        hyperparameters = train_params["hyperparameters"]
+        pi_hidden_sizes = hyperparameters["pi_hidden_sizes"]
+        vf_hidden_sizes = hyperparameters["vf_hidden_sizes"]
+
         self.env = CarlaEnv(map="Town01")
         input_shape = self.env.observation_space.shape[0]
         action_space = self.env.action_space
-        model_dir = os.path.join("models", model_name)
 
-        self.model = PPO(input_shape=input_shape, action_space=action_space, model_dir=model_dir)
+        # self.model = PPO(input_shape=input_shape, action_space=action_space, model_dir=model_dir)
+        self.model = PPO(input_shape, action_space,
+                        pi_hidden_sizes=pi_hidden_sizes, vf_hidden_sizes=vf_hidden_sizes,
+                        model_dir=os.path.join("models", model_name))
         self.model.init_session()
         if self.checkpoint:
             print(f"Loading model {model_name} from checkpoint {self.checkpoint}")
@@ -108,9 +119,9 @@ class ModelServer:
 
             # Predict action
             prediction, _ = self.model.predict(input_data, greedy=True)
-            print(f"Prediction: {prediction}")
+            # print(f"Prediction: {prediction}")
             prediction = self.env.network_to_carla(prediction)
-            print(f"Prediction (CARLA format): {prediction}")
+            # print(f"Prediction (CARLA format): {prediction}")
 
             # Prepare the response
             response = {"prediction": prediction}

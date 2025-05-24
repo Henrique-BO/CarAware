@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 import mlflow
+import yaml
 
 from tensorflow.core.framework import summary_pb2
 from rl.utils import build_mlp, create_counter_variable, create_mean_metrics_from_dict
@@ -210,6 +211,21 @@ class PPO():
         self.dirs = [self.checkpoint_dir, self.log_dir, self.video_dir]
         for d in self.dirs: os.makedirs(d, exist_ok=True)
 
+        # Initialize parameters dictionary
+        self.params = {
+            "model_name": model_dir,
+            "hyperparameters": {
+                "pi_hidden_sizes": pi_hidden_sizes,
+                "vf_hidden_sizes": vf_hidden_sizes,
+                "learning_rate": learning_rate,
+                "lr_decay": lr_decay,
+                "epsilon": epsilon,
+                "value_scale": value_scale,
+                "entropy_scale": entropy_scale,
+                "initial_std": initial_std,
+            }
+        }
+
     def init_session(self, sess=None, init_logging=True):
         if sess is None:
             self.sess = tf.Session()
@@ -222,9 +238,16 @@ class PPO():
 
     def save(self, episode_num, reason, time_now):
         model_checkpoint = os.path.join(self.checkpoint_dir, "model_ckpt")
-        model_checkpoint = model_checkpoint+"_"+reason+"_"+time_now+"_eps_"
+        model_checkpoint = model_checkpoint + "_" + reason + "_" + time_now + "_eps_"
         self.saver.save(self.sess, model_checkpoint, global_step=episode_num)  # global_step=self.episode_counter.var
-        print("Model checkpoint saved to {}".format(model_checkpoint+str(episode_num)))
+        print("Model checkpoint saved to {}".format(model_checkpoint + str(episode_num)))
+
+        # Save network parameters to a YAML file if it doesn't already exist
+        yaml_file = os.path.join(self.model_dir, "training.yaml")
+        if not os.path.exists(yaml_file):
+            with open(yaml_file, "w") as f:
+                yaml.dump(self.params, f)
+            print("Model parameters saved to {}".format(yaml_file))
 
     def load_latest_checkpoint(self):
         model_checkpoint = tf.train.latest_checkpoint(self.checkpoint_dir)

@@ -17,7 +17,10 @@ def play(train_params, sim_params, simulation, top_view):  # start_carla=True
     record_play_stats = train_params["record_play_stats"]
 
     hyper_params = train_params["hyperparameters"]
+
     learning_rate = hyper_params["learning_rate"]
+    pi_hidden_sizes = hyper_params["pi_hidden_sizes"]
+    vf_hidden_sizes = hyper_params["vf_hidden_sizes"]
     lr_decay = hyper_params["lr_decay"]
     discount_factor = hyper_params["discount_factor"]
     gae_lambda = hyper_params["gae_lambda"]
@@ -77,6 +80,7 @@ def play(train_params, sim_params, simulation, top_view):  # start_carla=True
     # Create model
     print("Creating model")
     model = PPO(input_shape, env.action_space,
+                pi_hidden_sizes=pi_hidden_sizes, vf_hidden_sizes=vf_hidden_sizes,
                 learning_rate=learning_rate, lr_decay=lr_decay,
                 epsilon=ppo_epsilon, initial_std=initial_std,
                 value_scale=value_scale, entropy_scale=entropy_scale,
