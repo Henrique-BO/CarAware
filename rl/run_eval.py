@@ -97,46 +97,46 @@ def run_eval(env, model, video_filename=None, eval_time=20, simulation=None, ego
         dist_acum_rl[current_veh].append(distance[current_veh])
 
         # =============== Lógica Extended Kalman Filter =================
+        try:
+            # Coleta dados GNSS
+            posX = simulation.ego_vehicle[current_veh].sens_gnss_input.x
+            posY = simulation.ego_vehicle[current_veh].sens_gnss_input.y
+            posZ = simulation.ego_vehicle[current_veh].sens_gnss_input.z
+            gnss = [posX, posY, posZ]
 
-        # Coleta dados GNSS
-        posX = simulation.ego_vehicle[current_veh].sens_gnss_input.x
-        posY = simulation.ego_vehicle[current_veh].sens_gnss_input.y
-        posZ = simulation.ego_vehicle[current_veh].sens_gnss_input.z
-        gnss = [posX, posY, posZ]
+            # Inicializa EKF com dados GNSS
+            ekf.initialize_with_gnss(gnss)
 
-        # Inicializa EKF com dados GNSS
-        ekf.initialize_with_gnss(gnss)
+            #z = np.array([[posX], [posY]])
+            #acelX = simulation.ego_vehicle[current_veh].sens_imu.ue_accelerometer[0]
+            #acelY = simulation.ego_vehicle[current_veh].sens_imu.ue_accelerometer[1]
 
-        #z = np.array([[posX], [posY]])
-        #acelX = simulation.ego_vehicle[current_veh].sens_imu.ue_accelerometer[0]
-        #acelY = simulation.ego_vehicle[current_veh].sens_imu.ue_accelerometer[1]
+            # Coleta dados IMU
+            imu = simulation.ego_vehicle[current_veh].sens_imu
 
-        # Coleta dados IMU
-        imu = simulation.ego_vehicle[current_veh].sens_imu
+            # EKF prediction com dados IMU
+            ekf.predict_state_with_imu(imu)
 
-        # EKF prediction com dados IMU
-        ekf.predict_state_with_imu(imu)
+            # EKF correction com dados GNSS
+            ekf.correct_state_with_gnss(gnss)
 
-        # EKF correction com dados GNSS
-        ekf.correct_state_with_gnss(gnss)
+            # Get EKF estimated location
+            prediction = ekf.get_location()
 
-        # Get EKF estimated location
-        prediction = ekf.get_location()
+            # Executa o filtro de Kalman para prever a posição do veículo
+            #predX, predY = kf.run(z)
 
-        # Executa o filtro de Kalman para prever a posição do veículo
-        #predX, predY = kf.run(z)
+            # Grava valor de predição o filtro de kalman para desenhar pontos na visão top-view
+            simulation.ego_vehicle[current_veh].pred_kalman_x = prediction[0]
+            simulation.ego_vehicle[current_veh].pred_kalman_y = prediction[1]
 
-        # Grava valor de predição o filtro de kalman para desenhar pontos na visão top-view
-        simulation.ego_vehicle[current_veh].pred_kalman_x = prediction[0]
-        simulation.ego_vehicle[current_veh].pred_kalman_y = prediction[1]
-
-        # Calcula distância prediction KF para GT
-        veh_gt = env._top_view.world.gt_input_ego
+            # Calcula distância prediction KF para GT
+            veh_gt = env._top_view.world.gt_input_ego
 
         # print(f"Ground truth: ({veh_gt[current_veh].x:.2f}, {veh_gt[current_veh].y:.2f})")
         # print(f"Prediction: ({prediction[0]:.2f}, {prediction[1]:.2f})")
 
-        try:
+        # try:
             distance_kf[current_veh] = np.sqrt((prediction[0] - veh_gt[current_veh].x) ** 2 + (
                     prediction[1] - veh_gt[current_veh].y) ** 2)
             dist_acum_kf[current_veh].append(distance_kf[current_veh])
