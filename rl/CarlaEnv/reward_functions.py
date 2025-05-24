@@ -163,12 +163,18 @@ def rw_distance_normalized(env, veh, veh_num):
 
 def rw_negative_distance(env, veh, veh_num):
     try:
-        veh_gt = env._top_view.world.gt_input_ego
-        distance = np.sqrt((veh.prediction[0] - veh_gt[veh_num].x) ** 2 + (
-                veh.prediction[1] - veh_gt[veh_num].y) ** 2)
+        # veh_gt = env._top_view.world.gt_input_ego
+        # reference = (veh_gt[veh_num].x, veh_gt[veh_num].y)
+        reference = (np.array([-20, -10]) + np.array([410, 340])) / 2 # center = (195, 165)
+        print(f"\tReference position: {reference}")
+        print(f"\tPrediction position: {veh.prediction}")
+        distance = np.sqrt((veh.prediction[0] - reference[0]) ** 2 + (
+                veh.prediction[1] - reference[1]) ** 2)
         reward = -distance
     except:
         reward = 0
         distance = 0
 
+    print(f"\tReward: {reward}")
+    print(f"\tDistance: {distance}")
     return reward, distance

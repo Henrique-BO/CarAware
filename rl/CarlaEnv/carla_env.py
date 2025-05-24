@@ -188,8 +188,8 @@ class CarlaEnv(gym.Env):
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
             # self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180] * self.history_length
             # self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180] * self.history_length
-            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0, 0, -180] * self.history_length
-            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 360, 10, 180] * self.history_length
+            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -100, -100, -100, -1.0, -1.0, -1.0, 0, 0, -180] * self.history_length
+            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 100, 100, 100, 1.0, 1.0, 1.0, 360, 10, 180] * self.history_length
 
             # OBS SMALL
             # GNSS_X, GNSS_Y, compass, speed, stw_angle
@@ -231,6 +231,10 @@ class CarlaEnv(gym.Env):
         self.observation_space = gym.spaces.Box(low=np.array(obs_low), high=np.array(obs_high))  # 200 a 1500 / 0 a 3
 
         self.metadata["video.frames_per_second"] = self.fps = self.average_fps = fps
+
+        self.veh = None
+        self.last_observation = [0] * self.observation_space.shape[0]
+        self.carla_state = [0] * self.observation_space.shape[0]
 
         # Reset env to set initial state
         self.reset()
@@ -286,6 +290,7 @@ class CarlaEnv(gym.Env):
             raise Exception("CarlaEnv.step() called after the environment was closed." +
                             "Check for info[\"closed\"] == True in the learning loop.")
 
+        self.veh = veh
         if action is not None:
             veh.prediction = self.network_to_carla(action)
             #actions = self.unflatten(actions)  # volta a ser um array 2D
@@ -313,6 +318,7 @@ class CarlaEnv(gym.Env):
         # Call external reward fn
         reward, self.distance = reward_functions.calculate_reward(self, self.reward_fn, self.last_reward, self.last_distance, veh, veh_num)
         reward = reward / self.diagonal  # Normaliza a recompensa pela diagonal do mapa
+        print(f"\tNormalized reward: {reward}")
 
         self.last_reward = reward  # variável usada pra calcular a condição negativa
         self.last_distance = self.distance
@@ -347,8 +353,22 @@ class CarlaEnv(gym.Env):
                 assert isinstance(observation, list), "Observations should be a list"
                 assert len(observation) * self.history_length == self.observation_space.shape[0], \
                     f"Expected {self.observation_space.shape[0] / self.history_length} observations, got {len(observation)}"
+
+                self.last_observation = observation
+                if self.veh:
+                    gt = self.veh.get_location()
+                    self.carla_state = [
+                        gt.x, gt.y,
+                        self.veh.sens_imu.ue_accelerometer[0], self.veh.sens_imu.ue_accelerometer[1], self.veh.sens_imu.ue_accelerometer[2],
+                        self.veh.sens_imu.ue_gyroscope[0], self.veh.sens_imu.ue_gyroscope[1], self.veh.sens_imu.ue_gyroscope[2],
+                        self.veh.sens_imu.ue_compass_degrees,
+                        self.veh.sens_spd_sas_speed,
+                        self.veh.sens_spd_sas_angle
+                    ]
+
                 observation = self.carla_to_network(observation)  # Convert to network format
                 self.observation_history.append(observation)  # Add the new observation to the deque
+                self.observation = np.concatenate(self.observation_history).tolist()
                 self.new_observations = True
             except zmq.Again:
                 pass

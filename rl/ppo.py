@@ -252,7 +252,7 @@ class PPO():
 
     def train(self, input_states, taken_actions, returns, advantage):
         kl_divergence = tf.reduce_mean(tfp.distributions.kl_divergence(self.policy.action_normal, self.policy_old.action_normal))
-        _, _, summaries, policy_l, value_l, entropy_l, l, kl, clip_ratio, step_idx = \
+        _, _, summaries, policy_l, value_l, entropy_l, l, kl, clip_ratio, step_idx, action_mean, value = \
             self.sess.run([
                     self.train_step,
                     self.update_metrics_op,
@@ -263,7 +263,9 @@ class PPO():
                     self.loss,
                     kl_divergence,
                     self.clip_frac,
-                    self.train_step_counter.var
+                    self.train_step_counter.var,
+                    self.policy.action_mean,  # Fetch action_mean
+                    self.policy.value,
                 ],
                 feed_dict={
                     self.input_states: input_states,
@@ -280,6 +282,8 @@ class PPO():
         self.l = l
         self.kl = kl
         self.clip = clip_ratio
+        self.act_mean = action_mean
+        self.v = value
 
         # salva desvio padrão para lógica que finaliza teste baseado nele
         summ = summary_pb2.Summary()

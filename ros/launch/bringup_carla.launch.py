@@ -20,8 +20,14 @@ def generate_launch_description():
     obs_port = 5000
     pred_port = 5001
     reset_port = 5002
-    model_rate = 50.0
     model_frame_id = 'model_frame'
+
+    sampling_rate_arg = DeclareLaunchArgument(
+        'sampling_rate',
+        default_value='50.0',
+        description='Sampling rate for the model node'
+    )
+    sampling_rate = LaunchConfiguration('sampling_rate')
 
     plot_error_arg = DeclareLaunchArgument(
         'plot_error',
@@ -125,7 +131,7 @@ def generate_launch_description():
             {'pred_port': pred_port},
             {'reset_port': reset_port},
             {'frame_id': model_frame_id},
-            {'publish_rate': model_rate},
+            {'publish_rate': sampling_rate},
             {'plot_error': plot_error},
             {'use_sim_time': True}
         ],
@@ -150,6 +156,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        sampling_rate_arg,
         plot_error_arg,
         carla_ros_bridge_launch,
         base_to_imu,

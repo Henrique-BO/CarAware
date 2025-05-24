@@ -156,6 +156,12 @@ class SimulationSetup:
         self.client.set_timeout(180.0)
         self.world = self.client.get_world()
 
+        settings = self.world.get_settings()
+        settings.synchronous_mode = False
+        settings.max_substep_delta_time = 0.01    # maximum physics dt in seconds
+        settings.max_substeps           = 10        # how many sub-steps per frame
+        self.world.apply_settings(settings)
+
         # DEFINE COMANDOS BASE PARA FAZER O SPAWN DOS ATORES DA SIMULAÇÃO
         self.spawn_actor = carla.command.SpawnActor
         #self.set_autopilot = carla.command.SetAutopilot
@@ -510,7 +516,8 @@ class SimulationSetup:
         self.ego_vehicle[veh_num].sens_imu = imu
 
         # CÁLCULO PARA FACILITAR A LEITURA DOS DADOS DO IMU
-        limits = (-99.9, 99.9)
+        # limits = (-99.9, 99.9)
+        limits = (-np.inf, np.inf)
         self.ego_vehicle[veh_num].sens_imu.ue_accelerometer = (
             max(limits[0], min(limits[1], imu.accelerometer.x)),
             max(limits[0], min(limits[1], imu.accelerometer.y)),

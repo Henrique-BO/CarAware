@@ -135,10 +135,12 @@ class ModelBridge(Node):
         try:
             # Get the estimated position in the CARLA (map) frame
             transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+            # EKF position estimate in the CARLA (map) frame
             self.ekf_position = [
                 transform.transform.translation.x,
                 -transform.transform.translation.y
             ]
+            # self.get_logger().info(f"EKF position: {self.ekf_position}")
             self.base_link_orientation = transform.transform.rotation
         except Exception as e:
             self.get_logger().warn(f"Could not get map->base_link transform: {e}")
@@ -199,10 +201,11 @@ class ModelBridge(Node):
                 # Plot the prediction error in real time
                 try:
                     transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
-                    gt = np.array([
-                        transform.transform.translation.x,
-                        transform.transform.translation.y
-                    ])
+                    # gt = np.array([
+                    #     transform.transform.translation.x,
+                    #     transform.transform.translation.y
+                    # ])
+                    gt = np.array([195, -165])  # Center of the map
                     error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
 
                     self.errors.append(error)

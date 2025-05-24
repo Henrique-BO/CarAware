@@ -6,7 +6,7 @@ services:
       "/app/entrypoint_tf.sh",
       "--wait-for-carla",
       "--run-main", "simulation",
-      "--run-model-server", $MODEL_NAME
+      "--run-model-server", $MODEL_NAME, $CHECKPOINT
     ]
 
   ros:

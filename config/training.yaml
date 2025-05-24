@@ -1,4 +1,4 @@
-model_name: "PPO_EKF_7"  # Modelo a ser utilizado
+model_name: "PPO_const_gt_2"  # Modelo a ser utilizado
 restart: true  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
@@ -9,12 +9,12 @@ hyperparameters:
   pi_hidden_sizes: [512, 256]  # Hidden layer sizes for the policy network
   vf_hidden_sizes: [512, 256]  # Hidden layer sizes for the value network
   history_length: 1  # Number of frames to use as input to the model
-  learning_rate: 8.0e-5  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
+  learning_rate: 1.0e-4  # Initial learning rate - Default: 1e-4 (funcionou) / 5e-4 (ruim) / 8e-5 (devagar) - Erros: 1e-3 gera NaN de output, pesos da NN tendem a infinito
   lr_decay: 1.0  # Per-episode exponential learning rate decay - Default: 1.0 (mantêm constante)
   discount_factor: 0.99  # GAE discount factor
   gae_lambda: 0.95  # GAE lambda
-  ppo_epsilon: 0.3  # PPO Epsilon - Default: 0.2
-  initial_std: 0.7  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
+  ppo_epsilon: 0.2  # PPO Epsilon - Default: 0.2
+  initial_std: 0.4  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
   target_std: 0.4  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
   value_scale: 0.1  # Value loss scale factor
   entropy_scale: 0.01  # Entropy loss scale factor - Default: 0.01

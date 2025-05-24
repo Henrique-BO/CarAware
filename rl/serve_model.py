@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument("--obs_port", type=int, default=5000, help="Port to receive observations.")
     parser.add_argument("--pred_port", type=int, default=5001, help="Port to send predictions.")
     parser.add_argument("--model", type=str, required=True, help="Trained model directory.")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Checkpoint to load.")
     return parser.parse_args()
 
 class ModelServer:
@@ -28,10 +29,11 @@ class ModelServer:
     Class to serve the trained model.
     """
 
-    def __init__(self, obs_port, pred_port, model_name):
+    def __init__(self, obs_port, pred_port, model_name, checkpoint=None):
         self.obs_port = obs_port
         self.pred_port = pred_port
         self.model_name = model_name
+        self.checkpoint = checkpoint
 
     def start(self):
         # Load the trained model
@@ -86,21 +88,29 @@ class ModelServer:
 
         self.model = PPO(input_shape=input_shape, action_space=action_space, model_dir=model_dir)
         self.model.init_session()
-        self.model.load_latest_checkpoint()
+        if self.checkpoint:
+            print(f"Loading model {model_name} from checkpoint {self.checkpoint}")
+            self.model.load_custom_checkpoint(self.checkpoint)
+        else:
+            print(f"Loading model {model_name} from latest checkpoint")
+            self.model.load_latest_checkpoint()
 
     def handle_request(self, input_data):
         """
         Handle incoming observations and return predictions.
         """
         try:
-            observations = np.array(input_data["observations"])
-            observations = self.env.carla_to_network(observations)
-            self.observation_history.append(observations)
-            input_data = np.concatenate(self.observation_history).tolist()
+            # observations = np.array(input_data["observations"])
+            # observations = self.env.carla_to_network(observations)
+            # self.observation_history.append(observations)
+            # input_data = np.concatenate(self.observation_history).tolist()
+            input_data = self.env.observation
 
             # Predict action
             prediction, _ = self.model.predict(input_data, greedy=True)
+            print(f"Prediction: {prediction}")
             prediction = self.env.network_to_carla(prediction)
+            print(f"Prediction (CARLA format): {prediction}")
 
             # Prepare the response
             response = {"prediction": prediction}
@@ -111,5 +121,5 @@ class ModelServer:
 
 if __name__ == "__main__":
     args = parse_args()
-    server = ModelServer(args.obs_port, args.pred_port, args.model)
+    server = ModelServer(args.obs_port, args.pred_port, args.model, args.checkpoint)
     server.start()

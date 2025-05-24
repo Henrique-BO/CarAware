@@ -4,8 +4,9 @@
 RUN_MAIN=false
 MAIN_MODE=""
 RUN_MODEL_SERVER=false
-MODEL_PATH=""
+MODEL_NAME=""
 WAIT_FOR_CARLA=false
+CHECKPOINT=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -17,7 +18,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --run-model-server)
             RUN_MODEL_SERVER=true
-            MODEL_PATH="$2"
+            MODEL_NAME="$2"
+            if [[ $# -gt 2 && $3 != --* ]]; then
+                CHECKPOINT="$3"
+                shift
+            fi
             shift 2
             ;;
         --wait-for-carla)
@@ -37,8 +42,12 @@ if $WAIT_FOR_CARLA; then
 fi
 
 if $RUN_MODEL_SERVER; then
-    echo "[TF Entrypoint] Launching model server with model: $MODEL_PATH"
-    python3 rl/serve_model.py --model "$MODEL_PATH" 2>&1 | sed 's/^/[Model Server] /' &
+    echo "[TF Entrypoint] Launching model server with model: $MODEL_NAME"
+    CMD="python3 rl/serve_model.py --model \"$MODEL_NAME\""
+    if [[ -n $CHECKPOINT ]]; then
+        CMD+=" --checkpoint \"$CHECKPOINT\""
+    fi
+    eval "$CMD 2>&1 | sed 's/^/[Model Server] /' &"
     MODEL_SERVER_PID=$!
 fi
 

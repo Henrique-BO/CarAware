@@ -317,14 +317,36 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 #else:
                 #    single_veh = 10
                 for idx_horizon in range(horizon):
+                    print(f"Horizon {idx_horizon}")
                     simulation.horizonte_atual = idx_horizon
                     #action_lst, value_lst = [], []
                     #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
+
+                    # Print CARLA and ROS observation states in a tabular format
+                    print(f"\t----------------------------------------------------------------")
+                    print(f"\t| Metric               | CARLA State       | ROS State         |")
+                    print(f"\t|----------------------|-------------------|-------------------|")
+                    print(f"\t| Position X           | {env.carla_state[0]:<17.2f} | {env.last_observation[0]:<17.2f} |")
+                    print(f"\t| Position Y           | {env.carla_state[1]:<17.2f} | {env.last_observation[1]:<17.2f} |")
+                    print(f"\t| Acceleration X       | {env.carla_state[2]:<17.2f} | {env.last_observation[2]:<17.2f} |")
+                    print(f"\t| Acceleration Y       | {env.carla_state[3]:<17.2f} | {env.last_observation[3]:<17.2f} |")
+                    print(f"\t| Acceleration Z       | {env.carla_state[4]:<17.2f} | {env.last_observation[4]:<17.2f} |")
+                    print(f"\t| Gyroscope X          | {env.carla_state[5]:<17.2f} | {env.last_observation[5]:<17.2f} |")
+                    print(f"\t| Gyroscope Y          | {env.carla_state[6]:<17.2f} | {env.last_observation[6]:<17.2f} |")
+                    print(f"\t| Gyroscope Z          | {env.carla_state[7]:<17.2f} | {env.last_observation[7]:<17.2f} |")
+                    print(f"\t| Compass Degrees      | {env.carla_state[8]:<17.2f} | {env.last_observation[8]:<17.2f} |")
+                    print(f"\t| Speed                | {env.carla_state[9]:<17.2f} | {env.last_observation[9]:<17.2f} |")
+                    print(f"\t| Steering Angle       | {env.carla_state[10]:<17.2f} | {env.last_observation[10]:<17.2f} |")
+                    print(f"\t----------------------------------------------------------------")
+
+                    print(f"\tNormalized state: {state}")
                     action, value = model.predict(state, write_to_summary=True)
+                    print(f"\tAction: {action}")
 
                     # Convert action to CARLA format
                     prediction = env.network_to_carla(action)
                     pred_socket.send_json({"prediction": prediction})
+                    # print(f"\tPrediction: {prediction}")
 
                     # Perform action
                     #new_state_lst, reward_lst, terminal_state_lst = [], [], []
@@ -333,6 +355,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     #new_state_lst.append(new_state)
                     #reward_lst.append(reward)
                     #terminal_state_lst.append(terminal_state)
+                    # print(f"\tReward: {reward}")
 
                     # gt = simulation.ego_vehicle[current_veh].get_location()
                     # print(f"Ground truth: {gt.x:.2f}, {gt.y:.2f}")
@@ -389,8 +412,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 returns = advantages + values
 
                 # Normalize
-                returns = (returns - returns.mean()) / (returns.std() + 1e-8)
-                advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                # returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+                # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
                 # Flatten arrays
                 states        = np.array(states)
@@ -445,16 +468,20 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                                         datetime.now().strftime("%H:%M:%S"), simulation.sim_total_time, "Episode", 999, 999])
 
                 mlflow.log_metric("train/std", model.current_std, step=episode_idx)
-                mlflow.log_metric("train/policy_loss", model.pl, step=episode_idx)
-                mlflow.log_metric("train/value_loss", model.vl, step=episode_idx)
-                mlflow.log_metric("train/entropy_loss", model.el, step=episode_idx)
-                mlflow.log_metric("train/total_loss", model.l, step=episode_idx)
+                mlflow.log_metric("train/loss/policy", model.pl, step=episode_idx)
+                mlflow.log_metric("train/loss/value", model.vl, step=episode_idx)
+                mlflow.log_metric("train/loss/entropy", model.el, step=episode_idx)
+                mlflow.log_metric("train/loss/total", model.l, step=episode_idx)
                 mlflow.log_metric("train/kl_divergence", model.kl, step=episode_idx)
-                # mlflow.log_metric("train/learning_rate", model.learning_rate, step=episode_idx)
-                # mlflow.log_metric("train/episode_reward", total_reward, step=episode_idx)
+                mlflow.log_metric("train/clip_ratio", model.clip, step=episode_idx)
+                # mlflow.log_metric("train/action_mean_x", model.act_mean[0], step=episode_idx)
+                # mlflow.log_metric("train/action_mean_y", model.act_mean[1], step=episode_idx)
+                mlflow.log_metric("train/value_rmse", np.sqrt(np.mean(np.square(model.v - returns[mb_idx]))), step=episode_idx)
+                mlflow.log_metric("train/advantage_mean", np.mean(advantages), step=episode_idx)
+                mlflow.log_metric("train/advantage_std", np.std(advantages), step=episode_idx)
 
                 # Finaliza simulação baseado no valor desejado de desvio padrão
-                print(model.current_std)
+                # print(model.current_std)
                 # if model.current_std <= target_std:
                 #     top_view.input_control.quit = True
 
