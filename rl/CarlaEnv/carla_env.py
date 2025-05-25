@@ -158,27 +158,38 @@ class CarlaEnv(gym.Env):
         #self.vetor_act_low = [-15, 90]
         #self.vetor_act_high = [210, 310]
 
-        # ACT - Define limites de coordenadas para mapa escolhido
-        if map == "Town01":
-            self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
-            self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
-        elif map == "Town02":
-            self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
-            self.vetor_act_high = [205, 315]  # Coordenadas X,Y
-        elif map == "Town10HD_Opt":
-            self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-            self.vetor_act_high = [125, 155]  # Coordenadas X,Y
-        elif map == "Random" or map == "Gradual_Random":
-            chosen_map = simulation.chosen_random_map
-            if chosen_map == "Town01":
-                self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
-                self.vetor_act_high = [210, 310]  # Coordenadas X,Y
-            elif chosen_map == "Town02":
-                self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
-                self.vetor_act_high = [410, 340]  # Coordenadas X,Y
-            elif chosen_map == "Town10HD_Opt":
-                self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-                self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        scale = 500 # Map width and height in meters
+        map_offsets = {
+            "Town01": (200, 200), # x in (-50, 450), y in (-50, 450)
+            "Town02": (200, 200), # x in (-50, 450), y in (-50, 450)
+            "Town10HD_Opt": (200, 200), # x in (-50, 450), y in (-50, 450)
+        }
+        default_offset = (0, 0) # x in (-250, 250), y in (-250, 250)
+        offset = map_offsets.get(map, default_offset)
+        self.vetor_act_low = [offset[0] - scale / 2.0, offset[1] - scale / 2.0]
+        self.vetor_act_high = [offset[0] + scale / 2.0, offset[1] + scale / 2.0]
+
+        # # ACT - Define limites de coordenadas para mapa escolhido
+        # if map == "Town01":
+        #     self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
+        # elif map == "Town02":
+        #     self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
+        #     self.vetor_act_high = [205, 315]  # Coordenadas X,Y
+        # elif map == "Town10HD_Opt":
+        #     self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # elif map == "Random" or map == "Gradual_Random":
+        #     chosen_map = simulation.chosen_random_map
+        #     if chosen_map == "Town01":
+        #         self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [210, 310]  # Coordenadas X,Y
+        #     elif chosen_map == "Town02":
+        #         self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
+        #         self.vetor_act_high = [410, 340]  # Coordenadas X,Y
+        #     elif chosen_map == "Town10HD_Opt":
+        #         self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [125, 155]  # Coordenadas X,Y
 
         self.diagonal = np.linalg.norm(np.array(self.vetor_act_high) - np.array(self.vetor_act_low))
 
@@ -188,8 +199,10 @@ class CarlaEnv(gym.Env):
             # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
             # self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180] * self.history_length
             # self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180] * self.history_length
-            self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -100, -100, -100, -1.0, -1.0, -1.0, 0, 0, -180] * self.history_length
-            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 100, 100, 100, 1.0, 1.0, 1.0, 360, 10, 180] * self.history_length
+
+            # EKF_x, EKF_y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
+            self.vetor_obs_low =  [self.vetor_act_low[0],  self.vetor_act_low[1], -100, -100, -100, -1.0, -1.0, -1.0, -180,  0, -180] * self.history_length
+            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 100,  100,  100,  1.0,  1.0,  1.0,  180, 10,  180] * self.history_length
 
             # OBS SMALL
             # GNSS_X, GNSS_Y, compass, speed, stw_angle

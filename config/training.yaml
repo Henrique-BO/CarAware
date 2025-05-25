@@ -1,5 +1,5 @@
-model_name: "PPO_EKF_9"  # Modelo a ser utilizado
-restart: true  # Se true, sobrescreve o modelo criado previamente
+model_name: "PPO_EKF_12"  # Modelo a ser utilizado
+restart: false  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
 last_positions_training: false  # Passa as últimas 4 posições para a rede no treinamento
