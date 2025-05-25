@@ -11,8 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rl.ppo import PPO
 from rl.CarlaEnv.carla_env import CarlaEnv
 
-HISTORY_LENGTH = 1
-
 def parse_args():
     """
     Parse command line arguments.
@@ -41,12 +39,6 @@ class ModelServer:
         print("Loading model...")
         self.load_model(self.model_name)
         print("Model loaded successfully.")
-
-        initial_state = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.observation_history = deque(maxlen=HISTORY_LENGTH)
-        for _ in range(HISTORY_LENGTH):
-            self.observation_history.append(initial_state)
-        initial_state = np.concatenate(self.observation_history).tolist()
 
         # Set up ZMQ sockets
         context = zmq.Context()
@@ -89,14 +81,15 @@ class ModelServer:
         hyperparameters = train_params["hyperparameters"]
         pi_hidden_sizes = hyperparameters["pi_hidden_sizes"]
         vf_hidden_sizes = hyperparameters["vf_hidden_sizes"]
+        history_length = hyperparameters["history_length"]
 
-        self.env = CarlaEnv(map="Town01")
+        self.env = CarlaEnv(history_length=history_length)
         input_shape = self.env.observation_space.shape[0]
         action_space = self.env.action_space
 
-        # self.model = PPO(input_shape=input_shape, action_space=action_space, model_dir=model_dir)
         self.model = PPO(input_shape, action_space,
                         pi_hidden_sizes=pi_hidden_sizes, vf_hidden_sizes=vf_hidden_sizes,
+                        history_length=history_length,
                         model_dir=os.path.join("models", model_name))
         self.model.init_session()
         if self.checkpoint:
@@ -115,12 +108,13 @@ class ModelServer:
             # observations = self.env.carla_to_network(observations)
             # self.observation_history.append(observations)
             # input_data = np.concatenate(self.observation_history).tolist()
-            input_data = self.env.observation
+            state = self.env.observation
 
             # Predict action
-            prediction, _ = self.model.predict(input_data, greedy=True)
+            action, _ = self.model.predict(state, greedy=True)
             # print(f"Prediction: {prediction}")
-            prediction = self.env.network_to_carla(prediction)
+            prediction = self.env.network_to_carla(action)
+            # prediction = self.env.network_to_carla(action, state)
             # print(f"Prediction (CARLA format): {prediction}")
 
             # Prepare the response

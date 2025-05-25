@@ -73,6 +73,7 @@ class PPO():
 
     def __init__(self, input_shape, action_space,
                  pi_hidden_sizes=(128, 64), vf_hidden_sizes=(128, 64),
+                 history_length=1,
                  learning_rate=3e-4, lr_decay=0.998, epsilon=0.2,
                  value_scale=0.5, entropy_scale=0.01, initial_std=0.4,
                  model_dir="./"):
@@ -215,6 +216,7 @@ class PPO():
         self.params = {
             "model_name": model_dir,
             "hyperparameters": {
+                "history_length": history_length,
                 "pi_hidden_sizes": pi_hidden_sizes,
                 "vf_hidden_sizes": vf_hidden_sizes,
                 "learning_rate": learning_rate,

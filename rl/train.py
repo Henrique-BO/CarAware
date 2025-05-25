@@ -128,6 +128,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
         print("Creating model")
         model = PPO(input_shape, env.action_space,
                     pi_hidden_sizes=pi_hidden_sizes, vf_hidden_sizes=vf_hidden_sizes,
+                    history_length=history_length,
                     learning_rate=learning_rate, lr_decay=lr_decay,
                     epsilon=ppo_epsilon, initial_std=initial_std,
                     value_scale=value_scale, entropy_scale=entropy_scale,
