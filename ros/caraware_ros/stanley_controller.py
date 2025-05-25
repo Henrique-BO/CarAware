@@ -23,26 +23,36 @@ class StanleyController(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.create_subscription(Path, '/planned_path', self.path_callback, 10)
+        self.create_subscription(Path, '/path', self.path_callback, 10)
         self.cmd_pub = self.create_publisher(AckermannDriveStamped, '/ackermann_cmd', 10)
         self.feedback_pub = self.create_publisher(Int32, '/closest_index_feedback', 10)
 
         self.timer = self.create_timer(0.05, self.control_loop)
 
+    def orientation_to_yaw(self, orientation):
+        return math.atan2(2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+                          1.0 - 2.0 * (orientation.y**2 + orientation.z**2))
+
     def path_callback(self, msg):
-        self.path = [(pose.pose.position.x, pose.pose.position.y) for pose in msg.poses]
+        self.path = [
+            (
+                pose.pose.position.x,
+                pose.pose.position.y,
+                self.orientation_to_yaw(pose.pose.orientation)
+            ) for pose in msg.poses]
 
     def control_loop(self):
         if not self.path:
+            self.cmd_pub.publish(AckermannDriveStamped())  # Publish empty command if no path
             return
 
+        # Get current vehicle position and orientation
         try:
             transform = self.tf_buffer.lookup_transform(
                 'map', self.vehicle_frame_id, rclpy.time.Time())
             px = transform.transform.translation.x
             py = transform.transform.translation.y
-            q = transform.transform.rotation
-            yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y**2 + q.z**2))
+            yaw = self.orientation_to_yaw(transform.transform.rotation)
         except LookupException:
             self.get_logger().warn('Transform not available')
             return
@@ -50,47 +60,38 @@ class StanleyController(Node):
         # Find closest point on path
         min_dist = float('inf')
         closest_idx = 0
-
-        for i, (x, y) in enumerate(self.path):
-            dist = math.hypot(px - x, py - y)
+        x_closest, y_closest, yaw_closest = self.path[0]
+        for i, (x_path, y_path, yaw_path) in enumerate(self.path):
+            dist = math.hypot(px - x_path, py - y_path)
             if dist < min_dist:
                 min_dist = dist
                 closest_idx = i
-
-        # Publish feedback to planner
-        self.feedback_pub.publish(Int32(data=closest_idx))
+                x_closest, y_closest, yaw_closest = x_path, y_path, yaw_path
 
         # Compute heading error
-        if closest_idx < len(self.path) - 1:
-            x1, y1 = self.path[closest_idx]
-            x2, y2 = self.path[closest_idx + 1]
-        else:
-            x1, y1 = self.path[closest_idx - 1]
-            x2, y2 = self.path[closest_idx]
-
-        path_yaw = math.atan2(y2 - y1, x2 - x1)
-        heading_error = self.normalize_angle(path_yaw - yaw)
+        heading_error = self.angle_difference(yaw_closest, yaw)
 
         # Compute cross track error
-        dx = x1 - px
-        dy = y1 - py
-        perp_error = dx * math.sin(path_yaw) - dy * math.cos(path_yaw)
+        dx = x_closest - px
+        dy = y_closest - py
+        perp_error = dx * math.sin(yaw_closest) - dy * math.cos(yaw_closest)
 
         # Stanley control
         steer = heading_error + math.atan2(self.k * perp_error, self.velocity)
 
+        # Publish Ackermann command
         ackermann_msg = AckermannDriveStamped()
         ackermann_msg.drive.speed = self.velocity
         ackermann_msg.drive.steering_angle = steer
         self.cmd_pub.publish(ackermann_msg)
 
-    @staticmethod
-    def normalize_angle(angle):
-        while angle > math.pi:
-            angle -= 2 * math.pi
-        while angle < -math.pi:
-            angle += 2 * math.pi
-        return angle
+        # Publish feedback to planner
+        self.feedback_pub.publish(Int32(data=closest_idx))
+
+
+    def angle_difference(self, angle1, angle2):
+        diff = (angle1 - angle2 + math.pi) % (2 * math.pi) - math.pi
+        return diff
 
 
 def main(args=None):
