@@ -238,18 +238,24 @@ class ModelBridge(Node):
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Error (m)")
         ax.grid()
-        line, = ax.plot([], [], 'r-', label='Model')
-        line_kf, = ax.plot([], [], 'b-', label='EKF')
+        line, = ax.plot([], [], 'r-', label='Model (Mean: N/A)')
+        line_kf, = ax.plot([], [], 'b-', label='EKF (Mean: N/A)')
         ax.legend()
 
         while rclpy.ok():
             if self.timestamps and self.errors:
+                model_mean_error = np.mean(self.errors)
+                ekf_mean_error = np.mean(self.kf_errors)
+
                 line.set_xdata(self.timestamps)
                 line.set_ydata(self.errors)
+                line.set_label(f'Model (Mean: {model_mean_error:.2f} m)')
 
                 line_kf.set_xdata(self.timestamps)
                 line_kf.set_ydata(self.kf_errors)
-                
+                line_kf.set_label(f'EKF (Mean: {ekf_mean_error:.2f} m)')
+
+                ax.legend()
                 ax.relim()
                 ax.autoscale_view()
                 fig.canvas.draw_idle()
