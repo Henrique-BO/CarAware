@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
@@ -17,7 +16,6 @@ class GoalController(Node):
         self.declare_parameter('angular_proportional', 0.4)
         self.declare_parameter('linear_proportional', 1.0)
         self.declare_parameter('max_lin_vel', 0.2) # m/s
-        self.declare_parameter('invert_angular', False)
         self.declare_parameter('threshold', 0.1)
 
         # Get parameters
@@ -25,7 +23,6 @@ class GoalController(Node):
         self.angular_proportional = self.get_parameter('angular_proportional').get_parameter_value().double_value
         self.linear_proportional = self.get_parameter('linear_proportional').get_parameter_value().double_value
         self.max_lin_vel = self.get_parameter('max_lin_vel').get_parameter_value().double_value
-        self.invert_angular = self.get_parameter('invert_angular').get_parameter_value().bool_value
         self.threshold = self.get_parameter('threshold').get_parameter_value().double_value
 
         # Subscribers
@@ -67,8 +64,8 @@ class GoalController(Node):
         delta_y = delta.position.y
         self.get_logger().info(f"Goal position: {delta_x}, {delta_y}")
 
-        distance = math.sqrt(delta_x**2 + delta_y**2)
-        theta = math.atan2(delta_y, delta_x)
+        distance = np.sqrt(delta_x**2 + delta_y**2)
+        theta = np.atan2(delta_y, delta_x)
 
         self.get_logger().info(f"Distance: {distance}, Angle: {theta}")
 
@@ -79,16 +76,11 @@ class GoalController(Node):
             self.ackermann_pub.publish(AckermannDriveStamped())
             return
 
-
         linear_action = min(abs(self.max_lin_vel), abs(self.linear_proportional * distance))
         if delta_x < 0:
             linear_action *= -1
-            theta = math.atan2(delta_y, -delta_x)
-
+            theta = np.atan2(delta_y, -delta_x)
         angular_action = self.angular_proportional * theta
-
-        if self.invert_angular:
-            angular_action *= -1
 
         ackermann_msg = AckermannDriveStamped()
         ackermann_msg.drive.speed = linear_action

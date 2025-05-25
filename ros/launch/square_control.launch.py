@@ -4,18 +4,28 @@ from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
+from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
-    # Stanley parameters
-    k = 10.0  # gain parameter
-    velocity = 0.05  # constant speed
-    vehicle_frame_id = 'base_link'  # vehicle frame ID
+    # Declare launch arguments
+    declare_k = DeclareLaunchArgument('k', default_value='10.0', description='Gain parameter for Stanley controller')
+    declare_velocity = DeclareLaunchArgument('velocity', default_value='0.05', description='Constant speed for Stanley controller')
+    declare_vehicle_frame = DeclareLaunchArgument('vehicle_frame', default_value='base_link', description='Vehicle frame ID')
 
-    # Square planner parameters
-    radius = 0.1  # radius of the rounded corners
-    side = 0.6  # length of the sides of the square
-    resolution = 0.01  # interpolation resolution
-    horizon = 30  # number of points in the horizon
+    declare_radius = DeclareLaunchArgument('radius', default_value='0.1', description='Radius of the rounded corners for square planner')
+    declare_side = DeclareLaunchArgument('side', default_value='0.6', description='Length of the sides of the square for square planner')
+    declare_resolution = DeclareLaunchArgument('resolution', default_value='0.01', description='Interpolation resolution for square planner')
+    declare_horizon = DeclareLaunchArgument('horizon', default_value='30', description='Number of points in the horizon for square planner')
+
+    # Get parameters from launch arguments
+    k = LaunchConfiguration('k')
+    velocity = LaunchConfiguration('velocity')
+    vehicle_frame = LaunchConfiguration('vehicle_frame')
+    radius = LaunchConfiguration('radius')
+    side = LaunchConfiguration('side')
+    resolution = LaunchConfiguration('resolution')
+    horizon = LaunchConfiguration('horizon')
 
     bringup_jetson_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -35,7 +45,7 @@ def generate_launch_description():
         parameters=[
             {'k': k},
             {'velocity': velocity},
-            {'vehicle_frame_id': vehicle_frame_id},
+            {'frame_id': vehicle_frame},
         ],
         remappings=[
             ('/planned_path', '/planned_path'),
@@ -63,6 +73,13 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        declare_k,
+        declare_velocity,
+        declare_vehicle_frame,
+        declare_radius,
+        declare_side,
+        declare_resolution,
+        declare_horizon,
         bringup_jetson_launch,
         stanley_controller_node,
         square_planner_node,

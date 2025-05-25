@@ -8,21 +8,24 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # Launch arguments
-    declare_vehicle_frame_id = DeclareLaunchArgument(
-        'vehicle_frame_id', default_value='base_link', description='Vehicle frame ID'
+    declare_vehicle_frame = DeclareLaunchArgument(
+        'vehicle_frame', default_value='base_link', description='Vehicle frame ID'
     )
-    declare_angular_proportional = DeclareLaunchArgument(
-        'angular_proportional', default_value='0.4', description='Angular proportional gain'
+    declare_kp_linear = DeclareLaunchArgument(
+        'kp_linear', default_value='1.0', description='Linear proportional gain'
     )
-    declare_linear_proportional = DeclareLaunchArgument(
-        'linear_proportional', default_value='1.0', description='Linear proportional gain'
+    declare_kp_angular = DeclareLaunchArgument(
+        'kp_angular', default_value='0.4', description='Angular proportional gain'
     )
-    declare_max_lin_vel = DeclareLaunchArgument(
-        'max_lin_vel', default_value='0.2', description='Maximum linear velocity (m/s)'
+    declare_max_vel = DeclareLaunchArgument(
+        'max_vel', default_value='0.1', description='Maximum linear velocity (m/s)'
     )
-    declare_invert_angular = DeclareLaunchArgument(
-        'invert_angular', default_value='false', description='Invert angular control'
-    )
+
+    # Parameters
+    vehicle_frame = LaunchConfiguration('vehicle_frame')
+    kp_linear = LaunchConfiguration('kp_linear')
+    kp_angular = LaunchConfiguration('kp_angular')
+    max_vel = LaunchConfiguration('max_vel')
 
     bringup_jetson_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -40,11 +43,10 @@ def generate_launch_description():
         name='goal_controller',
         output='screen',
         parameters=[
-            {'frame_id': LaunchConfiguration('vehicle_frame_id')},
-            {'angular_proportional': LaunchConfiguration('angular_proportional')},
-            {'linear_proportional': LaunchConfiguration('linear_proportional')},
-            {'max_lin_vel': LaunchConfiguration('max_lin_vel')},
-            {'invert_angular': LaunchConfiguration('invert_angular')},
+            {'frame_id': vehicle_frame},
+            {'kp_angular': kp_angular},
+            {'kp_linear': kp_linear},
+            {'max_vel': max_vel},
         ],
         remappings=[
             ('/goal_pose', '/goal_pose'),
@@ -53,11 +55,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_vehicle_frame_id,
-        declare_angular_proportional,
-        declare_linear_proportional,
-        declare_max_lin_vel,
-        declare_invert_angular,
+        declare_vehicle_frame,
+        declare_kp_angular,
+        declare_kp_linear,
+        declare_max_vel,
         bringup_jetson_launch,
         goal_controller,
     ])

@@ -12,11 +12,11 @@ class StanleyController(Node):
         super().__init__('stanley_controller')
         self.declare_parameter('k', 1.0)  # gain parameter
         self.declare_parameter('velocity', 2.0)  # constant speed
-        self.declare_parameter('vehicle_frame_id', 'base_link')  # vehicle frame ID
+        self.declare_parameter('frame_id', 'model_frame')  # vehicle frame ID
 
         self.k = self.get_parameter('k').value
         self.velocity = self.get_parameter('velocity').value
-        self.vehicle_frame_id = self.get_parameter('vehicle_frame_id').value
+        self.vehicle_frame_id = self.get_parameter('frame_id').value
 
         self.path = []
 

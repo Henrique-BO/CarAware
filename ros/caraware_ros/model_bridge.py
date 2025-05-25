@@ -99,6 +99,7 @@ class ModelBridge(Node):
 
         # Initialize real-time plotting
         self.errors = []
+        self.kf_errors = []
         self.timestamps = []
         if self.plot_error:
             self.plot_thread = threading.Thread(target=self.plot, daemon=True)
@@ -200,20 +201,28 @@ class ModelBridge(Node):
 
                 # Plot the prediction error in real time
                 try:
-                    transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
+                    gt_transform = self.tf_buffer.lookup_transform('map', 'EGO_1/IMU', rclpy.time.Time())
                     gt = np.array([
-                        transform.transform.translation.x,
-                        transform.transform.translation.y
+                        gt_transform.transform.translation.x,
+                        gt_transform.transform.translation.y
                     ])
-                    # gt = np.array([195, -165])  # Center of the map
-                    # gt = np.array([0, 0])
+
                     error = np.linalg.norm(np.array([position_msg.point.x, position_msg.point.y]) - gt)
 
+                    kf_transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
+                    kf = np.array([
+                        kf_transform.transform.translation.x,
+                        kf_transform.transform.translation.y
+                    ])
+                    kf_error = np.linalg.norm(kf - gt)
+
                     self.errors.append(error)
+                    self.kf_errors.append(kf_error)
                     self.timestamps.append(self.get_clock().now().nanoseconds * 1e-9)  # Convert to seconds
 
                     if len(self.errors) > 1000:
                         self.errors.pop(0)
+                        self.kf_errors.pop(0)
                         self.timestamps.pop(0)
                 except Exception as e:
                     self.get_logger().warn(f"Could not get map->base_link transform: {e}")
@@ -229,12 +238,18 @@ class ModelBridge(Node):
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Error (m)")
         ax.grid()
-        line, = ax.plot([], [], 'r-')
+        line, = ax.plot([], [], 'r-', label='Model')
+        line_kf, = ax.plot([], [], 'b-', label='EKF')
+        ax.legend()
 
         while rclpy.ok():
             if self.timestamps and self.errors:
                 line.set_xdata(self.timestamps)
                 line.set_ydata(self.errors)
+
+                line_kf.set_xdata(self.timestamps)
+                line_kf.set_ydata(self.kf_errors)
+                
                 ax.relim()
                 ax.autoscale_view()
                 fig.canvas.draw_idle()

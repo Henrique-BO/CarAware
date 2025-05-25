@@ -60,7 +60,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             os.path.join(
-                get_package_share_directory('quark_motor_bringup'),
+                get_package_share_directory('caraware_ros'),
                 'params',
                 'vesc_config.yml'
             )
