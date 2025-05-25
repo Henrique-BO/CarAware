@@ -345,7 +345,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                     print(f"\tAction: {action}")
 
                     # Convert action to CARLA format
-                    prediction = env.network_to_carla(action)
+                    prediction = env.network_to_carla(action, state)
                     pred_socket.send_json({"prediction": prediction})
                     # print(f"\tPrediction: {prediction}")
 

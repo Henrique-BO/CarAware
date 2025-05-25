@@ -113,8 +113,7 @@ class ModelServer:
             # Predict action
             action, _ = self.model.predict(state, greedy=True)
             # print(f"Prediction: {prediction}")
-            prediction = self.env.network_to_carla(action)
-            # prediction = self.env.network_to_carla(action, state)
+            prediction = self.env.network_to_carla(action, state)
             # print(f"Prediction (CARLA format): {prediction}")
 
             # Prepare the response

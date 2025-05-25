@@ -68,7 +68,7 @@ def run_eval(env, model, video_filename=None, eval_time=20, simulation=None, ego
         action, _ = model.predict(state, greedy=True)
 
         # Convert action to CARLA format and publish via ZMQ PUB socket
-        prediction = env.network_to_carla(action)
+        prediction = env.network_to_carla(action, state)
         if pred_socket != None:
             pred_socket.send_json({"prediction": prediction})
 

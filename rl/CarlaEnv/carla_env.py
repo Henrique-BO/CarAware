@@ -159,26 +159,45 @@ class CarlaEnv(gym.Env):
         #self.vetor_act_high = [210, 310]
 
         # ACT - Define limites de coordenadas para mapa escolhido
-        if map == "Town01":
-            self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
-            self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
-        elif map == "Town02":
-            self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
-            self.vetor_act_high = [205, 315]  # Coordenadas X,Y
-        elif map == "Town10HD_Opt":
-            self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-            self.vetor_act_high = [125, 155]  # Coordenadas X,Y
-        elif map == "Random" or map == "Gradual_Random":
-            chosen_map = simulation.chosen_random_map
-            if chosen_map == "Town01":
-                self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
-                self.vetor_act_high = [210, 310]  # Coordenadas X,Y
-            elif chosen_map == "Town02":
-                self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
-                self.vetor_act_high = [410, 340]  # Coordenadas X,Y
-            elif chosen_map == "Town10HD_Opt":
-                self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-                self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+
+        # Constant scaling factor with custom per-map offset
+        scale = 500
+        map_offsets = {
+            "Town01": (200, 200), # x in (-50, 450), y in (-50, 450)
+            "Town02": (200, 200), # x in (-50, 450), y in (-50, 450)
+            "Town10HD_Opt": (200, 200), # x in (-50, 450), y in (-50, 450)
+        }
+        default_offset = (0, 0) # x in (-250, 250), y in (-250, 250)
+        offset = map_offsets.get(map, default_offset)
+        self.vetor_act_low = [offset[0] - scale / 2.0, offset[1] - scale / 2.0]  # Coordenadas X,Y
+        self.vetor_act_high = [offset[0] + scale / 2.0, offset[1] + scale / 2.0]  # Coordenadas X,Y
+
+        # Actions are a correction to the EKF estimate
+        self.correction_scale = 2.0
+
+        # if map == "Town01":
+        #     self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
+        # elif map == "Town02":
+        #     self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
+        #     self.vetor_act_high = [205, 315]  # Coordenadas X,Y
+        # elif map == "Town10HD_Opt":
+        #     self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # elif map == "Random" or map == "Gradual_Random":
+        #     chosen_map = simulation.chosen_random_map
+        #     if chosen_map == "Town01":
+        #         self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [210, 310]  # Coordenadas X,Y
+        #     elif chosen_map == "Town02":
+        #         self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
+        #         self.vetor_act_high = [410, 340]  # Coordenadas X,Y
+        #     elif chosen_map == "Town10HD_Opt":
+        #         self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
+        #         self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # else:
+        #     self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+        #     self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
 
         self.diagonal = np.linalg.norm(np.array(self.vetor_act_high) - np.array(self.vetor_act_low))
 
@@ -292,7 +311,7 @@ class CarlaEnv(gym.Env):
 
         self.veh = veh
         if action is not None:
-            veh.prediction = self.network_to_carla(action)
+            veh.prediction = self.network_to_carla(action, self.observation)
             #actions = self.unflatten(actions)  # volta a ser um array 2D
             #for vehicle,action in zip(self._simulation.ego_vehicle,actions):
             #    vehicle.prediction = action
@@ -317,7 +336,7 @@ class CarlaEnv(gym.Env):
 
         # Call external reward fn
         reward, self.distance = reward_functions.calculate_reward(self, self.reward_fn, self.last_reward, self.last_distance, veh, veh_num)
-        reward = reward / self.diagonal  # Normaliza a recompensa pela diagonal do mapa
+        reward = reward / self.correction_scale  # Normaliza a recompensa
         print(f"\tNormalized reward: {reward}")
 
         self.last_reward = reward  # variável usada pra calcular a condição negativa
@@ -453,16 +472,21 @@ class CarlaEnv(gym.Env):
        #return [item for sublist in data for item in sublist]
 
 
-    def network_to_carla(self, data):  # lê o valor fornecido de -1 a 1 e converte para valores do Carla
+    # Transforms the network action into a position in CARLA coordinates
+    # pos = EKF estimate + action * correction_scale
+    def network_to_carla(self, action, state):
         # length = len(data)/self.action_length
 
         carla_data = []
-        for act_low, act_high, data_res in zip(self.vetor_act_low, self.vetor_act_high, data):
+        for act_low, act_high, s, a in zip(self.vetor_act_low, self.vetor_act_high, state[0:self.action_length], action):
             range_data = (act_high - act_low) / 2  # normaliza para -1 a +1
-            norm_factor = -(range_data + act_low)
-            carla_data.append((data_res * range_data) - norm_factor)
+            norm_factor = (act_high + act_low) / 2
+            ekf_data = s * range_data + norm_factor
+
+            correction = a * self.correction_scale
+
+            carla_data.append(ekf_data + correction)
 
             # flattened_data.append((data_sens+norm_factor)/range_data)
-
         return carla_data
 
