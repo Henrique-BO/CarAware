@@ -17,7 +17,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - ./asound.conf:/etc/asound.conf
       - carla-data:/home/carla
-    command: ["bash", "./CarlaUE4.sh", "-vulkan", "-fps=60", "-carla-port=2000"]
+    command: ["bash", "./CarlaUE4.sh", "-vulkan", "-quality-level=Low", "-fps=60", "-carla-port=2000"]
 
   tf:
     build:

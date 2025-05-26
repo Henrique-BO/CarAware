@@ -1,4 +1,4 @@
-model_name: "PPO_EKF_15_2"  # Modelo a ser utilizado
+model_name: "PPO_EKF_15_2b"  # Modelo a ser utilizado
 restart: false  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD

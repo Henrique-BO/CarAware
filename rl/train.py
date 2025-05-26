@@ -28,8 +28,8 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
     train_model      = "Latest"
     restart          = train_params["restart"]
     last_positions_training = train_params["last_positions_training"]
-    # randomize_offset = train_params["randomize_offset"]
-    randomize_offset = True
+    randomize_offset = train_params["randomize_offset"]
+    # randomize_offset = False
 
     hyper_params = train_params["hyperparameters"]
     pi_hidden_sizes = hyper_params["pi_hidden_sizes"]
@@ -320,31 +320,31 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 #else:
                 #    single_veh = 10
                 for idx_horizon in range(horizon):
-                    print(f"Horizon {idx_horizon}")
+                    # print(f"Horizon {idx_horizon}")
                     simulation.horizonte_atual = idx_horizon
                     #action_lst, value_lst = [], []
                     #for state, vehicle in zip(state_lst,simulation.ego_vehicle):  # Roda N vezes, para N veículos simulados
 
                     # Print CARLA and ROS observation states in a tabular format
-                    print(f"\t----------------------------------------------------------------")
-                    print(f"\t| Metric               | CARLA State       | ROS State         |")
-                    print(f"\t|----------------------|-------------------|-------------------|")
-                    print(f"\t| Position X           | {env.carla_state[0]:<17.2f} | {env.last_observation[0]:<17.2f} |")
-                    print(f"\t| Position Y           | {env.carla_state[1]:<17.2f} | {env.last_observation[1]:<17.2f} |")
-                    print(f"\t| Acceleration X       | {env.carla_state[2]:<17.2f} | {env.last_observation[2]:<17.2f} |")
-                    print(f"\t| Acceleration Y       | {env.carla_state[3]:<17.2f} | {env.last_observation[3]:<17.2f} |")
-                    print(f"\t| Acceleration Z       | {env.carla_state[4]:<17.2f} | {env.last_observation[4]:<17.2f} |")
-                    print(f"\t| Gyroscope X          | {env.carla_state[5]:<17.2f} | {env.last_observation[5]:<17.2f} |")
-                    print(f"\t| Gyroscope Y          | {env.carla_state[6]:<17.2f} | {env.last_observation[6]:<17.2f} |")
-                    print(f"\t| Gyroscope Z          | {env.carla_state[7]:<17.2f} | {env.last_observation[7]:<17.2f} |")
-                    print(f"\t| Compass Degrees      | {env.carla_state[8]:<17.2f} | {env.last_observation[8]:<17.2f} |")
-                    print(f"\t| Speed                | {env.carla_state[9]:<17.2f} | {env.last_observation[9]:<17.2f} |")
-                    print(f"\t| Steering Angle       | {env.carla_state[10]:<17.2f} | {env.last_observation[10]:<17.2f} |")
-                    print(f"\t----------------------------------------------------------------")
+                    # print(f"\t----------------------------------------------------------------")
+                    # print(f"\t| Metric               | CARLA State       | ROS State         |")
+                    # print(f"\t|----------------------|-------------------|-------------------|")
+                    # print(f"\t| Position X           | {env.carla_state[0]:<17.2f} | {env.last_observation[0]:<17.2f} |")
+                    # print(f"\t| Position Y           | {env.carla_state[1]:<17.2f} | {env.last_observation[1]:<17.2f} |")
+                    # print(f"\t| Acceleration X       | {env.carla_state[2]:<17.2f} | {env.last_observation[2]:<17.2f} |")
+                    # print(f"\t| Acceleration Y       | {env.carla_state[3]:<17.2f} | {env.last_observation[3]:<17.2f} |")
+                    # print(f"\t| Acceleration Z       | {env.carla_state[4]:<17.2f} | {env.last_observation[4]:<17.2f} |")
+                    # print(f"\t| Gyroscope X          | {env.carla_state[5]:<17.2f} | {env.last_observation[5]:<17.2f} |")
+                    # print(f"\t| Gyroscope Y          | {env.carla_state[6]:<17.2f} | {env.last_observation[6]:<17.2f} |")
+                    # print(f"\t| Gyroscope Z          | {env.carla_state[7]:<17.2f} | {env.last_observation[7]:<17.2f} |")
+                    # print(f"\t| Compass Degrees      | {env.carla_state[8]:<17.2f} | {env.last_observation[8]:<17.2f} |")
+                    # print(f"\t| Speed                | {env.carla_state[9]:<17.2f} | {env.last_observation[9]:<17.2f} |")
+                    # print(f"\t| Steering Angle       | {env.carla_state[10]:<17.2f} | {env.last_observation[10]:<17.2f} |")
+                    # print(f"\t----------------------------------------------------------------")
 
-                    print(f"\tNormalized state: {state}")
+                    # print(f"\tNormalized state: {state}")
                     action, value = model.predict(state, write_to_summary=True)
-                    print(f"\tAction: {action}")
+                    # print(f"\tAction: {action}")
 
                     # Convert action to CARLA format
                     prediction = env.network_to_carla(action)
