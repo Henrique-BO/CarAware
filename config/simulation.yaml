@@ -4,7 +4,7 @@ episodes:
   centralized_spawn: false  # Se true, força o spawn a acontecer no centro do mapa (Funciona apenas com Town02)
   sensors_blackout: false  # Se true, falha os sensores a cada X segundos, por Y segundos.
   kalman_filter: true  # Generates kalman filter outputs to compare with the prediction, during "Play" and evaluation in "Training"
-  num_episodes: 100  # Total de episódios que serão rodados (0 or less trains forever)
+  num_episodes: 150  # Total de episódios que serão rodados (0 or less trains forever)
   episode_reset: true  # Se true, faz o respawn aleatório a cada novo episódio
   reset_interval: 10  # Define qual número e episódios serão rodados até realizar o reset
   gradual_random_init_ep_change: 50  # Número de episódios antes de trocar o mapa
