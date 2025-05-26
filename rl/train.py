@@ -25,9 +25,11 @@ def log_params_recursive(params, prefix=""):
 
 def train(train_params, sim_params, sens_params, simulation, top_view):  # start_carla=True
     model_name       = train_params["model_name"]
-    train_model      = train_params["model_name"]
+    train_model      = "Latest"
     restart          = train_params["restart"]
     last_positions_training = train_params["last_positions_training"]
+    # randomize_offset = train_params["randomize_offset"]
+    randomize_offset = True
 
     hyper_params = train_params["hyperparameters"]
     pi_hidden_sizes = hyper_params["pi_hidden_sizes"]
@@ -300,7 +302,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 # Indica para o módulo top-view que finalizou a fase de evaluation
                 simulation.eval = False
             # Reset environment
-            state, terminal_state, total_reward = env.reset()
+            state, terminal_state, total_reward = env.reset(randomize_offset=randomize_offset)
 
             # While episode not done
             print(f"Training Episode {simulation.episodio_atual} (Step {model.get_train_step_idx()})")

@@ -158,71 +158,76 @@ class CarlaEnv(gym.Env):
         #self.vetor_act_low = [-15, 90]
         #self.vetor_act_high = [210, 310]
 
-        scale = 500 # Map width and height in meters
-        map_offsets = {
+        self.scale = 500 # Map width and height in meters
+        self.map_offsets = {
             "Town01": (200, 200), # x in (-50, 450), y in (-50, 450)
             "Town02": (200, 200), # x in (-50, 450), y in (-50, 450)
             "Town10HD_Opt": (200, 200), # x in (-50, 450), y in (-50, 450)
         }
-        default_offset = (0, 0) # x in (-250, 250), y in (-250, 250)
-        offset = map_offsets.get(map, default_offset)
-        self.vetor_act_low = [offset[0] - scale / 2.0, offset[1] - scale / 2.0]
-        self.vetor_act_high = [offset[0] + scale / 2.0, offset[1] + scale / 2.0]
+        self.default_offset = (0, 0) # x in (-250, 250), y in (-250, 250)
+        offset = self.map_offsets.get(map, self.default_offset)
+        self.compute_normalization(offset[0], offset[1])  # Compute normalization based on map offset
 
-        # # ACT - Define limites de coordenadas para mapa escolhido
-        # if map == "Town01":
-        #     self.vetor_act_low = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
-        #     self.vetor_act_high = [410, 340]  #[210, 310]  # Coordenadas X,Y
-        # elif map == "Town02":
-        #     self.vetor_act_low = [-15, 95]  # Coordenadas X,Y
-        #     self.vetor_act_high = [205, 315]  # Coordenadas X,Y
-        # elif map == "Town10HD_Opt":
-        #     self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-        #     self.vetor_act_high = [125, 155]  # Coordenadas X,Y
-        # elif map == "Random" or map == "Gradual_Random":
-        #     chosen_map = simulation.chosen_random_map
-        #     if chosen_map == "Town01":
-        #         self.vetor_act_low = [-15, 90]  # Coordenadas X,Y
-        #         self.vetor_act_high = [210, 310]  # Coordenadas X,Y
-        #     elif chosen_map == "Town02":
-        #         self.vetor_act_low = [-20, -10]  # Coordenadas X,Y
-        #         self.vetor_act_high = [410, 340]  # Coordenadas X,Y
-        #     elif chosen_map == "Town10HD_Opt":
-        #         self.vetor_act_low = [-130, -90]  # Coordenadas X,Y
-        #         self.vetor_act_high = [125, 155]  # Coordenadas X,Y
+        # self.vetor_act_low = [offset[0] - self.scale / 2.0, offset[1] - self.scale / 2.0]
+        # self.vetor_act_high = [offset[0] + self.scale / 2.0, offset[1] + self.scale / 2.0]
 
-        self.diagonal = np.linalg.norm(np.array(self.vetor_act_high) - np.array(self.vetor_act_low))
-
-        if not last_positions_training:
-            # Valores reais em formato de vetor
-            # OBS COMPLETO
-            # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            # self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180] * self.history_length
-            # self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180] * self.history_length
-
-            # EKF_x, EKF_y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
-            self.vetor_obs_low =  [self.vetor_act_low[0],  self.vetor_act_low[1], -100, -100, -100, -1.0, -1.0, -1.0, -180,  0, -180] * self.history_length
-            self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 100,  100,  100,  1.0,  1.0,  1.0,  180, 10,  180] * self.history_length
-
-            # OBS SMALL
-            # GNSS_X, GNSS_Y, compass, speed, stw_angle
-            #self.vetor_obs_low = [-15, 90, 0, 0, 0]
-            #self.vetor_obs_high = [210, 310, 360, 100, 360]  # 10 = ego_num-1
+        # ACT - Define limites de coordenadas para mapa escolhido
+        if map == "Town01":
+            self.map_min = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+            self.map_max = [410, 340]  #[210, 310]  # Coordenadas X,Y
+        elif map == "Town02":
+            self.map_min = [-15, 95]  # Coordenadas X,Y
+            self.map_max = [205, 315]  # Coordenadas X,Y
+        elif map == "Town10HD_Opt":
+            self.map_min = [-130, -90]  # Coordenadas X,Y
+            self.map_max = [125, 155]  # Coordenadas X,Y
+        elif map == "Random" or map == "Gradual_Random":
+            chosen_map = simulation.chosen_random_map
+            if chosen_map == "Town01":
+                self.map_min = [-15, 90]  # Coordenadas X,Y
+                self.map_max = [210, 310]  # Coordenadas X,Y
+            elif chosen_map == "Town02":
+                self.map_min = [-20, -10]  # Coordenadas X,Y
+                self.map_max = [410, 340]  # Coordenadas X,Y
+            elif chosen_map == "Town10HD_Opt":
+                self.map_min = [-130, -90]  # Coordenadas X,Y
+                self.map_max = [125, 155]  # Coordenadas X,Y
         else:
-            # OBS SMALL
-            self.vetor_obs_low = [-15, 90, 0, 0, -180]
-            self.vetor_obs_low.extend(self.vetor_act_low)
-            self.vetor_obs_low.extend(self.vetor_act_low)
-            self.vetor_obs_low.extend(self.vetor_act_low)
-            self.vetor_obs_low.extend(self.vetor_act_low)
+            self.map_min = [-250, -250]  # Coordenadas X,Y
+            self.map_max = [250, 250]  # Coordenadas X,Y
 
-            self.vetor_obs_high = [210, 310, 360, 100, 180]  # 10 = ego_num-1
-            self.vetor_obs_high.extend(self.vetor_act_high)
-            self.vetor_obs_high.extend(self.vetor_act_high)
-            self.vetor_obs_high.extend(self.vetor_act_high)
-            self.vetor_obs_high.extend(self.vetor_act_high)
+        # self.diagonal = np.linalg.norm(np.array(self.vetor_act_high) - np.array(self.vetor_act_low))
 
-        self.action_length = len(self.vetor_act_low)  # será usado para remontar a matriz
+        # if not last_positions_training:
+        #     # Valores reais em formato de vetor
+        #     # OBS COMPLETO
+        #     # GNSS_X, GNSS_Y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
+        #     # self.vetor_obs_low = [self.vetor_act_low[0], self.vetor_act_low[1], -99.9, -99.9, -99.9, -99.9, -99.9, -99.9, 0, 0, -180] * self.history_length
+        #     # self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 99.9, 99.9, 99.9, 99.9, 99.9, 99.9, 360, 100, 180] * self.history_length
+
+        #     # EKF_x, EKF_y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
+        #     self.vetor_obs_low =  [self.vetor_act_low[0],  self.vetor_act_low[1], -100, -100, -100, -1.0, -1.0, -1.0, -180,  0, -180] * self.history_length
+        #     self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 100,  100,  100,  1.0,  1.0,  1.0,  180, 10,  180] * self.history_length
+
+        #     # OBS SMALL
+        #     # GNSS_X, GNSS_Y, compass, speed, stw_angle
+        #     #self.vetor_obs_low = [-15, 90, 0, 0, 0]
+        #     #self.vetor_obs_high = [210, 310, 360, 100, 360]  # 10 = ego_num-1
+        # else:
+        #     # OBS SMALL
+        #     self.vetor_obs_low = [-15, 90, 0, 0, -180]
+        #     self.vetor_obs_low.extend(self.vetor_act_low)
+        #     self.vetor_obs_low.extend(self.vetor_act_low)
+        #     self.vetor_obs_low.extend(self.vetor_act_low)
+        #     self.vetor_obs_low.extend(self.vetor_act_low)
+
+        #     self.vetor_obs_high = [210, 310, 360, 100, 180]  # 10 = ego_num-1
+        #     self.vetor_obs_high.extend(self.vetor_act_high)
+        #     self.vetor_obs_high.extend(self.vetor_act_high)
+        #     self.vetor_obs_high.extend(self.vetor_act_high)
+        #     self.vetor_obs_high.extend(self.vetor_act_high)
+
+        # self.action_length = len(self.vetor_act_low)  # será usado para remontar a matriz
 
         '''
         # preenche vetor total de observação e ação
@@ -252,12 +257,26 @@ class CarlaEnv(gym.Env):
         # Reset env to set initial state
         self.reset()
 
+    def compute_normalization(self, offset_x, offset_y):
+        """
+        Compute the normalization factor based on the offset values.
+        This is used to scale the action space to the CARLA map limits.
+        """
+        self.vetor_act_low = [offset_x - self.scale / 2.0, offset_y - self.scale / 2.0]
+        self.vetor_act_high = [offset_x + self.scale / 2.0, offset_y + self.scale / 2.0]
+        print(f"Action space limits set to: {self.vetor_act_low} to {self.vetor_act_high}")
+
+        # EKF_x, EKF_y, accel_x, accel_y, accel_z, GYRO_pitch, GYRO_yaw, GYRO_roll, compass, speed, stw_angle
+        self.vetor_obs_low =  [self.vetor_act_low[0],  self.vetor_act_low[1], -10, -10, -10, -1.0, -1.0, -1.0, -180,  0, -180] * self.history_length
+        self.vetor_obs_high = [self.vetor_act_high[0], self.vetor_act_high[1], 10,  10,  10,  1.0,  1.0,  1.0,  180, 10,  180] * self.history_length
+
+
     def seed(self, seed=None):
 
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def reset(self, is_training=True):
+    def reset(self, is_training=True, randomize_offset=False):
 
         self.terminal_state = False  # Set to True when we want to end episode
         self.closed = False         # Set to True when ESC is pressed
@@ -265,7 +284,6 @@ class CarlaEnv(gym.Env):
         self.step_count = 0
         self.is_training = is_training
         initial_reward = 0
-
 
         #initial_state = [0, 0, 0, 0, 0]  # Small
         if not self.last_positions_training:
@@ -288,6 +306,19 @@ class CarlaEnv(gym.Env):
                 raise RuntimeError("Failed to reset EKF: Received negative response from reset service.")
         except Exception as e:
             raise RuntimeError(f"Failed to reset EKF: {e}")
+
+        # Randomize offset, respecting map limits
+        # Scale/2 = 250
+        # Town01: x range (-20, 410), y range (-10, 340)
+        # x_offset can be between 160 and 230
+        # y_offset can be between 90 and 240
+        # 160 = map_max[0] - self.scale / 2.0
+        # 230 = map_min[0] + self.scale / 2.0
+        if randomize_offset:
+            offset_x = np.random.uniform(self.map_max[0] - self.scale / 2.0, self.map_min[0] + self.scale / 2.0)
+            offset_y = np.random.uniform(self.map_max[1] - self.scale / 2.0, self.map_min[1] + self.scale / 2.0)
+            print(f"Randomized offset: ({offset_x}, {offset_y})")
+            self.compute_normalization(offset_x, offset_y)  # Compute normalization based on map offset
 
         #state_lst = []
         #terminal_state = []
@@ -330,7 +361,7 @@ class CarlaEnv(gym.Env):
 
         # Call external reward fn
         reward, self.distance = reward_functions.calculate_reward(self, self.reward_fn, self.last_reward, self.last_distance, veh, veh_num)
-        reward = reward / self.diagonal  # Normaliza a recompensa pela diagonal do mapa
+        reward = reward / self.scale  # Normaliza a recompensa pela diagonal do mapa
         print(f"\tNormalized reward: {reward}")
 
         self.last_reward = reward  # variável usada pra calcular a condição negativa

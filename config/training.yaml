@@ -1,9 +1,10 @@
-model_name: "PPO_EKF_14"  # Modelo a ser utilizado
-restart: true  # Se true, sobrescreve o modelo criado previamente
+model_name: "PPO_EKF_15_2"  # Modelo a ser utilizado
+restart: false  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
 last_positions_training: false  # Passa as últimas 4 posições para a rede no treinamento
 record_play_stats: false  # Grava no Tensorboard as distâncias prediction e kalman
+randomize_offset: true
 
 hyperparameters:
   pi_hidden_sizes: [512, 256]  # Hidden layer sizes for the policy network
