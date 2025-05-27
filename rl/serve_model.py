@@ -83,7 +83,7 @@ class ModelServer:
         vf_hidden_sizes = hyperparameters["vf_hidden_sizes"]
         history_length = hyperparameters["history_length"]
 
-        self.env = CarlaEnv(history_length=history_length)
+        self.env = CarlaEnv(history_length=history_length, map="Town01")
         input_shape = self.env.observation_space.shape[0]
         action_space = self.env.action_space
 

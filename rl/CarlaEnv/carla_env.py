@@ -173,21 +173,46 @@ class CarlaEnv(gym.Env):
 
         # ACT - Define limites de coordenadas para mapa escolhido
 
-        waypoint_list = simulation.world.get_map().generate_waypoints(2.0)  # Gera waypoints para o mapa
-        min_x = min(waypoint.transform.location.x for waypoint in waypoint_list)
-        max_x = max(waypoint.transform.location.x for waypoint in waypoint_list)
-        print(f"Map {map} X limits: {min_x} to {max_x}")
-        min_y = min(waypoint.transform.location.y for waypoint in waypoint_list)
-        max_y = max(waypoint.transform.location.y for waypoint in waypoint_list)
-        print(f"Map {map} Y limits: {min_y} to {max_y}")
+        if simulation:
+            waypoint_list = simulation.world.get_map().generate_waypoints(2.0)  # Gera waypoints para o mapa
+            min_x = min(waypoint.transform.location.x for waypoint in waypoint_list)
+            max_x = max(waypoint.transform.location.x for waypoint in waypoint_list)
+            print(f"Map {map} X limits: {min_x} to {max_x}")
+            min_y = min(waypoint.transform.location.y for waypoint in waypoint_list)
+            max_y = max(waypoint.transform.location.y for waypoint in waypoint_list)
+            print(f"Map {map} Y limits: {min_y} to {max_y}")
 
-        self.map_min = [min_x - 20, min_y - 20]
-        self.map_max = [max_x + 20, max_y + 20]
-        print(f"Map {map} limits: {self.map_min} to {self.map_max}")
+            self.map_min = [min_x - 20, min_y - 20]
+            self.map_max = [max_x + 20, max_y + 20]
+            print(f"Map {map} limits: {self.map_min} to {self.map_max}")
+        else:
+            if map == "Town01":
+                self.map_min = [-20, -10]  #[-15, 90]  # Coordenadas X,Y
+                self.map_max = [410, 340]  #[210, 310]  # Coordenadas X,Y
+            elif map == "Town02":
+                self.map_min = [-15, 95]  # Coordenadas X,Y
+                self.map_max = [205, 315]  # Coordenadas X,Y
+            elif map == "Town10HD_Opt":
+                self.map_min = [-130, -90]  # Coordenadas X,Y
+                self.map_max = [125, 155]  # Coordenadas X,Y
+            elif map == "Random" or map == "Gradual_Random":
+                chosen_map = simulation.chosen_random_map
+                if chosen_map == "Town01":
+                    self.map_min = [-15, 90]  # Coordenadas X,Y
+                    self.map_max = [210, 310]  # Coordenadas X,Y
+                elif chosen_map == "Town02":
+                    self.map_min = [-20, -10]  # Coordenadas X,Y
+                    self.map_max = [410, 340]  # Coordenadas X,Y
+                elif chosen_map == "Town10HD_Opt":
+                    self.map_min = [-130, -90]  # Coordenadas X,Y
+                    self.map_max = [125, 155]  # Coordenadas X,Y
+            else:
+                self.map_min = [-250, -250]  # Coordenadas X,Y
+                self.map_max = [250, 250]  # Coordenadas X,Y
 
         assert(self.map_min[0] < self.map_max[0] and self.map_min[1] < self.map_max[1]), \
             f"Map limits are invalid: {self.map_min} to {self.map_max}"
-        assert(self.map_max[0] - self.map_min[0] < self.scale and self.map_max[1] - self.map_min[1] < self.scale), \
+        assert(self.map_max[0] - self.map_min[0] <= self.scale and self.map_max[1] - self.map_min[1] <= self.scale), \
             f"Map size exceeds scale: {self.map_max[0] - self.map_min[0]}x{self.map_max[1] - self.map_min[1]} > {self.scale}x{self.scale}"
 
         # if map == "Town01":

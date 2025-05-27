@@ -297,8 +297,6 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                         [str(simulation.episodio_atual), datetime.date(datetime.now()), datetime.now().strftime("%H:%M:%S"),
                         simulation.sim_total_time, reason, 999, 999])
 
-                mlflow.log_metric("eval_reward", eval_reward, step=simulation.episodio_atual)
-
                 # Indica para o módulo top-view que finalizou a fase de evaluation
                 simulation.eval = False
             # Reset environment
