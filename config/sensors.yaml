@@ -25,8 +25,8 @@ gnss:
 # INERTIAL MEASUREMENT UNIT (IMU)
 imu:
   enabled: true
-  sampling: 0.02  # Tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
-  accel_error: 0.0 # 0.0097  # Default: 0.00001
+  sampling: 0.001  # Tempo em segundos entre cada aquisição - Default: 0.1 / Real: 0.01
+  accel_error: 0.0097  # Default: 0.00001
   gyro_error: 0.00067   # Default: 0.00001
   gyro_bias: 0.0
   blackout_on: false  # Habilita/desabilita blackout desse sensor

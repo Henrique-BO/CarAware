@@ -1,11 +1,8 @@
 import argparse
 import os
 import sys
-import numpy as np
 import yaml
 import zmq
-
-from collections import deque
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rl.ppo import PPO
@@ -104,17 +101,11 @@ class ModelServer:
         Handle incoming observations and return predictions.
         """
         try:
-            # observations = np.array(input_data["observations"])
-            # observations = self.env.carla_to_network(observations)
-            # self.observation_history.append(observations)
-            # input_data = np.concatenate(self.observation_history).tolist()
             state = self.env.observation
 
             # Predict action
             action, _ = self.model.predict(state, greedy=True)
-            # print(f"Prediction: {prediction}")
             prediction = self.env.network_to_carla(action, state)
-            # print(f"Prediction (CARLA format): {prediction}")
 
             # Prepare the response
             response = {"prediction": prediction}

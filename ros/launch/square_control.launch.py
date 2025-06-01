@@ -64,6 +64,7 @@ def generate_launch_description():
             {'side_length': side},
             {'resolution': resolution},
             {'horizon': horizon},
+            {'frame_id': vehicle_frame},
         ],
         remappings=[
             ('/vehicle_pose', '/vehicle_pose'),

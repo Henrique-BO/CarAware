@@ -4,6 +4,7 @@ prediction_preview: true  # Desenha a previsão na visão Top-view
 prediction_hud: true  # Insere informações de prediction no HUD
 last_positions_training: false  # Passa as últimas 4 posições para a rede no treinamento
 record_play_stats: false  # Grava no Tensorboard as distâncias prediction e kalman
+randomize_offset: true
 
 hyperparameters:
   pi_hidden_sizes: [512, 256]  # Hidden layer sizes for the policy network
@@ -17,7 +18,7 @@ hyperparameters:
   initial_std: 0.4  # Initial value of the std used in the gaussian policy - Default: 1.0 (funcionou) / 0.7 (melhor)
   target_std: 0.4  # Target de desvio padrão, utilizado para finalizar treinamento quando atingido - NÃO ESTÁ FUNCIONANDO
   value_scale: 0.1  # Value loss scale factor
-  entropy_scale: 0.01  # Entropy loss scale factor - Default: 0.01
+  entropy_scale: 0.1  # Entropy loss scale factor - Default: 0.01
   horizon: 1024  # Number of steps to simulate per training step - Default: 128 / 32768 (funcionou)
   num_training: 1  # Number of times the model will be trained per episode
   num_epochs: 3  # Number of PPO training epochs per traning step - Default: 3 (funcionou) / 4

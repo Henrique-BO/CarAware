@@ -16,7 +16,7 @@
     <exec_depend>tf2_ros</exec_depend>
     <exec_depend>carla_ros_bridge</exec_depend>
     <exec_depend>vesc_msgs</exec_depend>
-    <!-- <exec_depend>vesc_ackermann</exec_depend> -->
+    <exec_depend>vesc_ackermann</exec_depend>
     <exec_depend>robot_localization</exec_depend>
     <exec_depend>quark_motor_bringup</exec_depend>
 

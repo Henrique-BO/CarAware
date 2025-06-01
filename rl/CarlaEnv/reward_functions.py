@@ -167,8 +167,8 @@ def rw_negative_distance(env, veh, veh_num):
         reference = (veh_gt[veh_num].x, veh_gt[veh_num].y)
         # reference = (np.array([-20, -10]) + np.array([410, 340])) / 2 # center = (195, 165)
         # reference = (0.0, 0.0)
-        print(f"\tReference position: {reference}")
-        print(f"\tPrediction position: {veh.prediction}")
+        # print(f"\tReference position: {reference}")
+        # print(f"\tPrediction position: {veh.prediction}")
         distance = np.sqrt((veh.prediction[0] - reference[0]) ** 2 + (
                 veh.prediction[1] - reference[1]) ** 2)
         reward = -distance
@@ -176,6 +176,6 @@ def rw_negative_distance(env, veh, veh_num):
         reward = 0
         distance = 0
 
-    print(f"\tReward: {reward}")
-    print(f"\tDistance: {distance}")
+    # print(f"\tReward: {reward}")
+    # print(f"\tDistance: {distance}")
     return reward, distance
