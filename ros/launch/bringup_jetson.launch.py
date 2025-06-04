@@ -42,14 +42,18 @@ def generate_launch_description():
         arguments=['0', '0', '0', '-1.57079632679', '0', '3.14159265359', 'base_link', imu_frame_id]
     )
 
-    imu_bringup_launch = IncludeLaunchDescription(
-        AnyLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory('quark_imu_bringup'),
-                'launch',
-                'bmi160.launch.yaml'
-            )
-        )
+    imu_pub = Node(
+        package='imu_pkg',
+        executable='imu_node',
+        name='imu_pub',
+        output='screen',
+        parameters=[
+            {'calibrate': True},
+            {'publish_rate': 60},
+        ],
+        remappings=[
+            ('/data_raw', '/imu/data_raw'),
+        ]
     )
 
     vesc_driver_node = Node(
@@ -115,7 +119,7 @@ def generate_launch_description():
             {'plot_error': False},
         ],
         remappings=[
-            ('/imu/data', '/imu/data'),
+            ('/imu/data', '/imu/data_raw'),
             ('/speed_sas/ackermann', '/carla/EGO_1/Speed_SAS'),
             ('/odometry/filtered', '/odometry/filtered'),
             ('/model/prediction', '/model/prediction')
@@ -144,7 +148,7 @@ def generate_launch_description():
     return LaunchDescription([
         map_to_odom,
         base_to_imu,
-        imu_bringup_launch,
+        imu_pub,
         vesc_driver_node,
         vesc_republisher,
         robot_localization_ekf,

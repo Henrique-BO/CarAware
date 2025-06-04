@@ -59,7 +59,7 @@ class ModelBridge(Node):
         # Data storage
         self.imu_data = None
         self.ack_data = None
-        self.ekf_position = None
+        self.ekf_data = None
         self.base_link_orientation = None
 
         # ZMQ PUB socket for streaming observations
@@ -98,10 +98,10 @@ class ModelBridge(Node):
         )
 
         # Initialize real-time plotting
-        self.errors = []
-        self.kf_errors = []
-        self.timestamps = []
         if self.plot_error:
+            self.errors = []
+            self.kf_errors = []
+            self.timestamps = []
             self.plot_thread = threading.Thread(target=self.plot, daemon=True)
             self.plot_thread.start()
 
@@ -120,22 +120,13 @@ class ModelBridge(Node):
                 rclpy.time.Time()
             )
 
-            # Transform orientation using transforms3d only
-            q_imu = [msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z]  # w, x, y, z
+            # Transform linear acceleration and angular velocity (rotation only)
             q_tf = [
                 tf.transform.rotation.w,
                 tf.transform.rotation.x,
                 tf.transform.rotation.y,
                 tf.transform.rotation.z
-            ]  # w, x, y, z
-
-            # Compose the two quaternions: q_base_link = q_tf * q_imu
-            q_bl = transforms3d.quaternions.qmult(q_tf, q_imu)
-            roll, pitch, yaw = transforms3d.euler.quat2euler(q_bl)
-            yaw = np.rad2deg(yaw)
-            assert -180 <= yaw <= 180, "Yaw angle out of bounds"
-
-            # Transform linear acceleration and angular velocity (rotation only)
+            ]
             R = transforms3d.quaternions.quat2mat(q_tf)
             lin_acc = np.dot(R, np.array([
                 msg.linear_acceleration.x,
@@ -151,7 +142,6 @@ class ModelBridge(Node):
             self.imu_data = {
                 'linear_acceleration': lin_acc.tolist(),
                 'angular_velocity': ang_vel.tolist(),
-                'yaw': yaw,
             }
         except Exception as e:
             self.get_logger().warn(f"Could not transform IMU to base_link: {e}")
@@ -162,7 +152,7 @@ class ModelBridge(Node):
         """
         self.ack_data = {
             'speed': msg.drive.speed,
-            'steering_angle': msg.drive.steering_angle
+            'steering_angle': np.rad2deg(msg.drive.steering_angle)
         }
 
     def odo_callback(self, msg):
@@ -170,14 +160,27 @@ class ModelBridge(Node):
         Callback for filtered state estimate.
         """
         try:
-            # Get the estimated position in the CARLA (map) frame
+            # Get the EKF-estimated position in the CARLA (map) frame
             transform = self.tf_buffer.lookup_transform('map', 'base_link', rclpy.time.Time())
-            # EKF position estimate in the CARLA (map) frame
-            self.ekf_position = [
-                transform.transform.translation.x,
-                -transform.transform.translation.y
+
+            # Extract yaw from base_link orientation
+            q = [
+                transform.transform.rotation.w,
+                transform.transform.rotation.x,
+                transform.transform.rotation.y,
+                transform.transform.rotation.z
             ]
-            # self.get_logger().info(f"EKF position: {self.ekf_position}")
+            _, _, yaw = transforms3d.euler.quat2euler(q)
+            yaw = np.rad2deg(yaw)
+            assert -180 <= yaw <= 180, "Yaw angle out of bounds"
+
+            self.ekf_data = {
+                'position': [
+                    transform.transform.translation.x,
+                    -transform.transform.translation.y
+                ],
+                'yaw': yaw
+            }
             self.base_link_orientation = transform.transform.rotation
         except Exception as e:
             self.get_logger().warn(f"Could not get map->base_link transform: {e}")
@@ -187,17 +190,16 @@ class ModelBridge(Node):
         Process IMU and odometry data and stream observations.
         """
         if self.imu_data is None or self.ack_data is None or \
-            self.ekf_position is None or self.base_link_orientation is None:
-            # self.get_logger().warn("Waiting for data...")
+            self.ekf_data is None or self.base_link_orientation is None:
             return
 
         # Prepare input data for the model
         input_data = {
             'observations': [
-                *self.ekf_position,
+                *self.ekf_data['position'],
                 *self.imu_data['linear_acceleration'],
                 *self.imu_data['angular_velocity'],
-                self.imu_data['yaw'],
+                self.ekf_data['yaw'],
                 self.ack_data['speed'],
                 self.ack_data['steering_angle']
             ]
@@ -205,6 +207,27 @@ class ModelBridge(Node):
 
         # Stream observations via ZMQ PUB socket
         self.obs_socket.send_json(input_data)
+
+        # Pretty print sent observations in a tabular format with units
+        obs_keys_units = [
+            ("EKF X", "m"),
+            ("EKF Y", "m"),
+            ("Acc X", "m/s²"),
+            ("Acc Y", "m/s²"),
+            ("Acc Z", "m/s²"),
+            ("Gyro X", "rad/s"),
+            ("Gyro Y", "rad/s"),
+            ("Gyro Z", "rad/s"),
+            ("Yaw", "deg"),
+            ("Speed", "m/s"),
+            ("Steering", "deg")
+        ]
+        obs_values = input_data['observations']
+        tab_list = "\n".join([
+            f"{k:>10} : {v: .4f} {unit:>5}"
+            for (k, unit), v in zip(obs_keys_units, obs_values)
+        ])
+        self.get_logger().info(f"Sent observations:\n{tab_list}")
 
     def receive_predictions(self):
         """
@@ -229,9 +252,8 @@ class ModelBridge(Node):
                 transform_msg.header.stamp = stamp
                 transform_msg.header.frame_id = 'map'
                 transform_msg.child_frame_id = self.frame_id
-                transform_msg.transform.translation.x = position_msg.point.x
-                transform_msg.transform.translation.y = position_msg.point.y
-                transform_msg.transform.translation.z = 0.0
+                transform_msg.transform.translation.x = output_data['prediction'][0]
+                transform_msg.transform.translation.y = -output_data['prediction'][1]
                 transform_msg.transform.rotation = self.base_link_orientation
                 self.tf_broadcaster.sendTransform(transform_msg)
 
