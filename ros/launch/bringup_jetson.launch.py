@@ -1,19 +1,17 @@
 import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import AnyLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # Vehicle parameters
-    speed_to_erpm_gain = 4000.0  # Conversion factor from speed to erpm
-    speed_to_erpm_offset = 0.0  # Offset for speed to erpm conversion
-    speed_to_duty_cycle_gain = 1.0  # Conversion factor from speed to erpm
-    speed_to_duty_cycle_offset = 0.0  # Offset for speed to erpm conversion
-    steering_angle_to_servo_gain = 1.0  # Conversion factor from steering angle to servo position
-    steering_angle_to_servo_offset = 0.5  # Offset for steering angle to servo position
-    wheelbase = 0.2  # meters
+    speed_to_erpm_gain = 4000.0
+    speed_to_erpm_offset = 0.0
+    speed_to_duty_cycle_gain = 1.0 # control only
+    speed_to_duty_cycle_offset = 0.0 # control only
+    steering_angle_to_servo_gain = 1.0
+    steering_angle_to_servo_offset = 0.5
+    wheelbase = 0.255  # meters
 
     # Model bridge parameters
     obs_port = 5000
