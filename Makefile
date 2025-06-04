@@ -7,6 +7,9 @@ test:
 jetson:
 	docker compose -f docker-compose.yml -f docker-compose.jetson.yml up
 
+viz:
+	docker compose -f docker-compose.yml -f docker-compose.viz.yml up
+
 build:
 	docker compose -f docker-compose.yml build
 

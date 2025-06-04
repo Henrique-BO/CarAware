@@ -1,0 +1,17 @@
+services:
+  carla: !reset null
+
+  tf: !reset null
+
+  ros:
+    image: osrf/ros:humble-desktop
+    ipc: host
+    privileged: true
+    environment:
+      - ROS_DOMAIN_ID=1
+      - TERM=xterm-256color
+    command: ["bash", "-c", "echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc && \
+              echo 'source /root/carla_ws/install/setup.bash' >> /root/.bashrc && \
+              rviz2 -d /root/carla_ws/src/CarAware/ros/config/jetson.rviz && \
+              tail -F /dev/null"]
+    working_dir: /root/carla_ws
