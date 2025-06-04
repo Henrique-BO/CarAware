@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 
 def calculate_reward(env, reward_fn, last_reward = None, last_distance_lst = None, veh = None, veh_num = None):
@@ -171,8 +172,17 @@ def rw_negative_distance(env, veh, veh_num):
         # print(f"\tPrediction position: {veh.prediction}")
         distance = np.sqrt((veh.prediction[0] - reference[0]) ** 2 + (
                 veh.prediction[1] - reference[1]) ** 2)
-        reward = -distance
-    except:
+
+        ekf_prediction = env.network_to_carla(env.observation[-11:-9], [0.0, 0.0])
+        ekf_distance = np.sqrt((ekf_prediction[0] - reference[0]) ** 2 + (
+                ekf_prediction[1] - reference[1]) ** 2)
+        print(f"Prediction: {veh.prediction}, EKF Prediction: {ekf_prediction}, Reference: {reference}")
+        print(f"Distance: {distance}, EKF Distance: {ekf_distance}")
+
+        reward = -distance + ekf_distance
+        # reward = -distance
+    except Exception as e:
+        print(f"Error calculating negative distance reward: {e}")
         reward = 0
         distance = 0
 

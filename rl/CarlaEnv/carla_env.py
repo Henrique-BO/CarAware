@@ -292,7 +292,7 @@ class CarlaEnv(gym.Env):
         #     self.vetor_obs_high.extend(self.vetor_act_high)
         #     self.vetor_obs_high.extend(self.vetor_act_high)
 
-        # self.action_length = len(self.vetor_act_low)  # será usado para remontar a matriz
+        self.action_length = len(self.vetor_act_low)  # será usado para remontar a matriz
 
         '''
         # preenche vetor total de observação e ação
