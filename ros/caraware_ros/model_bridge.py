@@ -110,15 +110,51 @@ class ModelBridge(Node):
     def imu_callback(self, msg):
         """
         Callback for IMU data.
+        Transform IMU message to base_link frame before saving.
         """
-        roll, pitch, yaw = transforms3d.euler.quat2euler([msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z])
-        yaw = np.rad2deg(yaw)
-        assert -180 <= yaw <= 180, "Yaw angle out of bounds"
-        self.imu_data = {
-            'linear_acceleration': [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z],
-            'angular_velocity': [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z],
-            'yaw': yaw,
-        }
+        try:
+            # Lookup transform from IMU frame to base_link
+            tf = self.tf_buffer.lookup_transform(
+                'base_link',
+                msg.header.frame_id,
+                rclpy.time.Time()
+            )
+
+            # Transform orientation using transforms3d only
+            q_imu = [msg.orientation.w, msg.orientation.x, msg.orientation.y, msg.orientation.z]  # w, x, y, z
+            q_tf = [
+                tf.transform.rotation.w,
+                tf.transform.rotation.x,
+                tf.transform.rotation.y,
+                tf.transform.rotation.z
+            ]  # w, x, y, z
+
+            # Compose the two quaternions: q_base_link = q_tf * q_imu
+            q_bl = transforms3d.quaternions.qmult(q_tf, q_imu)
+            roll, pitch, yaw = transforms3d.euler.quat2euler(q_bl)
+            yaw = np.rad2deg(yaw)
+            assert -180 <= yaw <= 180, "Yaw angle out of bounds"
+
+            # Transform linear acceleration and angular velocity (rotation only)
+            R = transforms3d.quaternions.quat2mat(q_tf)
+            lin_acc = np.dot(R, np.array([
+                msg.linear_acceleration.x,
+                msg.linear_acceleration.y,
+                msg.linear_acceleration.z
+            ]))
+            ang_vel = np.dot(R, np.array([
+                msg.angular_velocity.x,
+                msg.angular_velocity.y,
+                msg.angular_velocity.z
+            ]))
+
+            self.imu_data = {
+                'linear_acceleration': lin_acc.tolist(),
+                'angular_velocity': ang_vel.tolist(),
+                'yaw': yaw,
+            }
+        except Exception as e:
+            self.get_logger().warn(f"Could not transform IMU to base_link: {e}")
 
     def ack_callback(self, msg):
         """
