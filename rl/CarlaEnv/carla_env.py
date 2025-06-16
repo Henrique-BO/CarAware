@@ -162,6 +162,7 @@ class CarlaEnv(gym.Env):
         self.map_offsets = {
             "Town01": (200, 200), # x in (-50, 450), y in (-50, 450)
             "Town02": (200, 200), # x in (-50, 450), y in (-50, 450)
+            "Town02_Opt": (200, 200), # x in (-50, 450), y in (-50, 450)
             "Town10HD_Opt": (200, 200), # x in (-50, 450), y in (-50, 450)
         }
         self.default_offset = (0, 0) # x in (-250, 250), y in (-250, 250)
@@ -404,7 +405,7 @@ class CarlaEnv(gym.Env):
 
         # Call external reward fn
         reward, self.distance = reward_functions.calculate_reward(self, self.reward_fn, self.last_reward, self.last_distance, veh, veh_num)
-        reward = reward / self.scale  # Normaliza a recompensa pela diagonal do mapa
+        reward = reward * self.scale  # Normaliza a recompensa pela diagonal do mapa
         # print(f"\tNormalized reward: {reward}")
 
         self.last_reward = reward  # variável usada pra calcular a condição negativa

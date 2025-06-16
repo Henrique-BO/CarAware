@@ -25,7 +25,7 @@ def log_params_recursive(params, prefix=""):
 
 def train(train_params, sim_params, sens_params, simulation, top_view):  # start_carla=True
     model_name       = train_params["model_name"]
-    train_model      = "Latest"
+    train_model      = train_params.get("checkpoint", "latest")
     restart          = train_params["restart"]
     last_positions_training = train_params["last_positions_training"]
     randomize_offset = train_params["randomize_offset"]
@@ -155,7 +155,7 @@ def train(train_params, sim_params, sens_params, simulation, top_view):  # start
                 os.makedirs(d)
         model.init_session()
         if not restart:
-            if train_model == "Latest":
+            if train_model.lower() == "latest":
                 model.load_latest_checkpoint()
             else:  # Custom model
                 model.load_custom_checkpoint(train_model)
