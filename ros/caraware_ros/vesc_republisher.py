@@ -63,7 +63,7 @@ class VescRepublisher(Node):
         ackermann_msg.header.stamp = stamp
         ackermann_msg.header.frame_id = self.frame_id
         ackermann_msg.drive.speed = speed
-        ackermann_msg.drive.steering_angle = steering_angle
+        ackermann_msg.drive.steering_angle = np.rad2deg(steering_angle)
         self.ackermann_pub.publish(ackermann_msg)
 
         twist_msg = TwistWithCovarianceStamped()
