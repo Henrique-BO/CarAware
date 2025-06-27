@@ -71,6 +71,9 @@ class StanleyController(Node):
                 closest_idx = i
                 x_closest, y_closest, yaw_closest = x_path, y_path, yaw_path
 
+        idx = min(closest_idx + 5, len(self.path) - 1)
+        x_closest, y_closest, yaw_closest = self.path[idx]
+
         # Compute heading error
         heading_error = self.angle_difference(yaw_closest, yaw)
 
@@ -81,12 +84,12 @@ class StanleyController(Node):
 
         # Stanley control
         steer = heading_error #+ math.atan2(self.k * perp_error, self.velocity)
-        self.get_logger().info(
-            f"Heading error: {math.degrees(heading_error):.2f}°, "
-            f"Perpendicular error: {perp_error:.2f} m, "
-            f"CTE angle: {math.degrees(math.atan2(self.k * perp_error, self.velocity)):.2f}°, "
-            f"Steering angle: {math.degrees(steer):.2f}°, "
-        )
+        # self.get_logger().info(
+        #     f"Heading error: {math.degrees(heading_error):.2f}°, "
+        #     f"Perpendicular error: {perp_error:.2f} m, "
+        #     f"CTE angle: {math.degrees(math.atan2(self.k * perp_error, self.velocity)):.2f}°, "
+        #     f"Steering angle: {math.degrees(steer):.2f}°, "
+        # )
 
         # Publish Ackermann command
         ackermann_msg = AckermannDriveStamped()

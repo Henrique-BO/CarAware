@@ -49,7 +49,8 @@ class SquarePlanner(Node):
         adjusted_index = self.last_published_start_index + msg.data
         if adjusted_index >= 0:
             self.closest_index = min(adjusted_index, len(self.full_path.poses) - 1)
-            self.get_logger().info(f"Adjusted closest index: {self.closest_index}")
+            # self.get_logger().info(f"Adjusted closest index: {self.closest_index}/{len(self.full_path.poses) - 1}")
+            self.publish_horizon()
         else:
             self.get_logger().warn(f"Feedback index out of bounds: {adjusted_index}")
 
@@ -107,14 +108,15 @@ class SquarePlanner(Node):
         L = self.side
 
         segments = []
+        # segments += self.interpolate_segment((0, 0), (L - r, 0))
         segments += self.interpolate_segment((r, 0), (L - r, 0))
-        # segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
-        # segments += self.interpolate_segment((L, r), (L, L - r))
-        # segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
-        # segments += self.interpolate_segment((L - r, L), (r, L))
-        # segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
-        # segments += self.interpolate_segment((0, L - r), (0, r))
-        # segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
+        segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
+        segments += self.interpolate_segment((L, r), (L, L - r))
+        segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
+        segments += self.interpolate_segment((L - r, L), (r, L))
+        segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
+        segments += self.interpolate_segment((0, L - r), (0, r))
+        segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
 
         path_msg = Path()
         path_msg.header.frame_id = 'odom'
@@ -152,7 +154,7 @@ class SquarePlanner(Node):
             return
 
         # Reset the path to null if the vehicle has reached the end
-        if self.closest_index >= len(self.full_path.poses):
+        if self.closest_index >= len(self.full_path.poses) - 1:
             self.get_logger().info("Vehicle has reached the end of the path.")
             self.full_path = Path()
             self.full_path_pub.publish(self.full_path)
