@@ -118,10 +118,12 @@ class ModelServer:
             response = {"prediction": prediction}
 
             self.count += 1
-            if self.count >= 1000 and len(self.times) < 1000:
-                elapsed = time.time() - t0
-                self.times.append(elapsed)
-                print(f"#{len(self.times)}: Inference time={elapsed}s\tavg={np.mean(self.times)}\tstd={np.std(self.times)}\tmax={np.max(self.times)}")
+            if self.count > 1000 and len(self.times) < 1000:
+                self.times.append((time.time() - t0)*1e3)
+                print(f"#{len(self.times)}: Mean= {np.mean(self.times):.4f}\t"
+                      f"Std= {np.std(self.times):.4f}\t"
+                      f"Min= {np.min(self.times):.4f}\t"
+                      f"Max= {np.max(self.times):.4f}")
 
             return response
         except Exception as e:

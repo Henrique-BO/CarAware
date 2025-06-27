@@ -155,6 +155,22 @@ def generate_launch_description():
             'localization.rviz')]
     )
 
+    plotter = Node(
+        package='caraware_ros',
+        executable='plotter',
+        name='plotter',
+        output='screen',
+        parameters=[
+            {'world_frame': 'map'},
+            {'frames': ['EGO_1/IMU', 'base_link', model_frame_id]},
+            {'use_sim_time': True},
+        ],
+        remappings=[
+            ('/tf', '/tf'),
+            ('/tf_static', '/tf_static')
+        ]
+    )
+
     return LaunchDescription([
         sampling_rate_arg,
         plot_error_arg,
@@ -166,4 +182,5 @@ def generate_launch_description():
         robot_localization_ekf,
         model_bridge,
         rviz,
+        plotter
     ])

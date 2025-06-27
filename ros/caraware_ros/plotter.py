@@ -3,17 +3,23 @@ import threading
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import zmq
 
 from rclpy.node import Node
 from tf2_ros import Buffer, TransformListener
+from std_srvs.srv import Trigger
 
 class Plotter(Node):
     def __init__(self):
         super().__init__('plotter')
         self.declare_parameter('frames', ['base_link'])
         self.declare_parameter('world_frame', 'map')
+        self.declare_parameter('obs_port', 5000)
+
         self.frames = self.get_parameter('frames').get_parameter_value().string_array_value
         self.world_frame = self.get_parameter('world_frame').get_parameter_value().string_value
+        self.obs_port = self.get_parameter('obs_port').get_parameter_value().integer_value
+
         if not self.frames:
             self.get_logger().info('No frames specified. Plotter will not plot anything.')
             self.frames = []
@@ -24,17 +30,47 @@ class Plotter(Node):
 
         self.times = []
         self.trajectories = {frame: [] for frame in self.frames}
-        self.plot_thread = threading.Thread(target=self.plot_trajectories, daemon=True)
-        self.plot_thread.start()
+        self.observations = []
+        # self.plot_thread = threading.Thread(target=self.plot_trajectories, daemon=True)
+        # self.plot_thread.start()
         self.timer = self.create_timer(0.05, self.update_trajectories)
+        self.save_service = self.create_service(
+            Trigger,
+            'save_trajectories',
+            self.save_trajectories_callback
+        )
+
+        # SUB socket for receiving observations
+        context = zmq.Context()
+        self.sub_socket = context.socket(zmq.SUB)
+        obs_addr = f"tcp://localhost:{self.obs_port}"
+        self.sub_socket.connect(obs_addr)
+        self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all topics
+        print(f"Listening for observations on {obs_addr}")
+
+        self.observation = None
+        self.obs_thread = threading.Thread(target=self.observation_listener, daemon=True)
+        self.obs_thread.start()
+
+    def observation_listener(self):
+        try:
+            while True:
+                # Wait for observations from the client
+                self.observation = self.sub_socket.recv_json()['observations']
+        except KeyboardInterrupt:
+            print("Shutting down observation listener...")
+        finally:
+            self.sub_socket.close()
 
     def update_trajectories(self):
-        if not self.frames:
+        if not self.frames or not self.observation:
             return
 
-        t = self.get_clock().now()
-        now = t.seconds_nanoseconds()[0] + t.seconds_nanoseconds()[1] * 1e-9
+        t = rclpy.time.Time()
+        now = self.get_clock().now()
+        now = now.seconds_nanoseconds()[0] + now.seconds_nanoseconds()[1] * 1e-9
         self.times.append(now)
+        self.observations.append(self.observation)
         for frame in self.frames:
             try:
                 trans = self.tf_buffer.lookup_transform(self.world_frame, frame, t)
@@ -68,30 +104,56 @@ class Plotter(Node):
         plt.show()
 
     # Save the trajectories to a csv file
-    def save_trajectories(self, filename='trajectories.csv'):
+    def save_trajectories(self, filename):
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             columns = ['time']
             for frame in self.trajectories.keys():
                 columns.append(f"{frame}_x")
                 columns.append(f"{frame}_y")
+            columns.extend([
+                "EKF_x",
+                "EKF_y",
+                "acc_x",
+                "acc_y",
+                "acc_z",
+                "gyro_x",
+                "gyro_y",
+                "gyro_z",
+                "yaw",
+                "speed",
+                "steering_angle",
+            ])
             writer.writerow(columns)
+
             # Iterate over each timestamp and the corresponding trajectory points for all frames
-            for t, traj_points in zip(self.times, zip(*self.trajectories.values())):
+            for t, traj_points, observation in zip(self.times, zip(*self.trajectories.values()), self.observations):
                 row = [t]
                 # traj_points is a tuple with one (x, y) tuple per frame at this timestamp
                 for coords in traj_points:
                     x, y = coords
                     row.extend([x, y])
+                row.extend(observation)
                 writer.writerow(row)
+        self.get_logger().info(f"Trajectories saved to {filename}")
+
+    def save_trajectories_callback(self, request, response):
+        filename = f"/root/carla_ws/src/CarAware/notebooks/data/trajectories.csv"
+        self.save_trajectories(filename)
+        response.success = True
+        response.message = f"Trajectories saved to {filename}"
+
+        # Reset trajectories and times after saving
+        self.times = []
+        self.trajectories = {frame: [] for frame in self.frames}
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
     node = Plotter()
     try:
         rclpy.spin(node)
-    except Exception as e:
-        node.save_trajectories()
+    except KeyboardInterrupt:
         pass
     node.destroy_node()
     rclpy.shutdown()

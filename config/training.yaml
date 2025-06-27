@@ -1,4 +1,4 @@
-model_name: "PPO_EKF_25"  # Modelo a ser utilizado
+model_name: "PPO_EKF_32"  # Modelo a ser utilizado
 checkpoint: "latest"
 restart: false  # Se true, sobrescreve o modelo criado previamente
 prediction_preview: true  # Desenha a previsão na visão Top-view
