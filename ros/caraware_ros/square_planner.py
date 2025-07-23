@@ -1,49 +1,53 @@
 # planner_node.py
-import rclpy
+# import rclpy
+import matplotlib.pyplot as plt
 import math
 
-from rclpy.node import Node
-from nav_msgs.msg import Path
-from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Int32
-from std_srvs.srv import Trigger
-from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
-from geometry_msgs.msg import TransformStamped
-from transforms3d.euler import euler2quat, quat2euler
+# from rclpy.node import Node
+# from nav_msgs.msg import Path
+# from geometry_msgs.msg import PoseStamped
+# from std_msgs.msg import Int32
+# from std_srvs.srv import Trigger
+# from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
+# from geometry_msgs.msg import TransformStamped
+# from transforms3d.euler import euler2quat, quat2euler
 
-class SquarePlanner(Node):
+class SquarePlanner():
+# class SquarePlanner(Node):
     def __init__(self):
-        super().__init__('square_planner')
-        self.declare_parameter('radius', 10.0)
-        self.declare_parameter('side_length', 100.0)
-        self.declare_parameter('resolution', 0.2)
-        self.declare_parameter('horizon', 30)
-        self.declare_parameter('frame_id', 'base_link')
+        # super().__init__('square_planner')
+        # self.declare_parameter('radius', 10.0)
+        # self.declare_parameter('side_length', 100.0)
+        # self.declare_parameter('resolution', 0.2)
+        # self.declare_parameter('horizon', 30)
+        # self.declare_parameter('frame_id', 'base_link')
 
-        self.radius = self.get_parameter('radius').get_parameter_value().double_value
-        self.side = self.get_parameter('side_length').get_parameter_value().double_value
-        self.resolution = self.get_parameter('resolution').get_parameter_value().double_value
-        self.horizon = self.get_parameter('horizon').get_parameter_value().integer_value
-        self.vehicle_frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
+        # self.radius = self.get_parameter('radius').get_parameter_value().double_value
+        # self.side = self.get_parameter('side_length').get_parameter_value().double_value
+        # self.resolution = self.get_parameter('resolution').get_parameter_value().double_value
+        # self.horizon = self.get_parameter('horizon').get_parameter_value().integer_value
+        # self.vehicle_frame_id = self.get_parameter('frame_id').get_parameter_value().string_value
 
-        self.vehicle_pose = None
-        self.closest_index = 0
+        # self.vehicle_pose = None
+        # self.closest_index = 0
 
-        self.full_path = Path()
-        self.last_published_start_index = 0
-        self.last_path_stamp = None
+        # self.full_path = Path()
+        # self.last_published_start_index = 0
+        # self.last_path_stamp = None
 
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        # self.tf_buffer = Buffer()
+        # self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.feedback_sub = self.create_subscription(Int32, '/closest_index_feedback', self.feedback_callback, 10)
-        self.path_pub = self.create_publisher(Path, '/path', 10)
-        self.full_path_pub = self.create_publisher(Path, '/full_path', 10)
+        # self.feedback_sub = self.create_subscription(Int32, '/closest_index_feedback', self.feedback_callback, 10)
+        # self.path_pub = self.create_publisher(Path, '/path', 10)
+        # self.full_path_pub = self.create_publisher(Path, '/full_path', 10)
 
-        self.timer = self.create_timer(0.2, self.publish_horizon)
+        # self.timer = self.create_timer(0.2, self.publish_horizon)
 
-        self.create_service(Trigger, 'generate_plan', self.handle_plan_request)
-        self.get_logger().info("Square Planner Node Initialized")
+        # self.create_service(Trigger, 'generate_plan', self.handle_plan_request)
+        # self.get_logger().info("Square Planner Node Initialized")
+
+        self.resolution = 0.2
 
     def feedback_callback(self, msg):
         adjusted_index = self.last_published_start_index + msg.data
@@ -109,14 +113,19 @@ class SquarePlanner(Node):
 
         segments = []
         # segments += self.interpolate_segment((0, 0), (L - r, 0))
-        segments += self.interpolate_segment((r, 0), (L - r, 0))
+
+        segments += self.interpolate_segment((0, 0), (L - r, 0))
         segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
-        segments += self.interpolate_segment((L, r), (L, L - r))
-        segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
-        segments += self.interpolate_segment((L - r, L), (r, L))
-        segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
-        segments += self.interpolate_segment((0, L - r), (0, r))
-        segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
+        segments += self.interpolate_segment((L, r), (L, L - 0.5*r))
+
+        # segments += self.interpolate_segment((r, 0), (L - r, 0))
+        # segments += self.arc(L - r, r, -math.pi / 2, 0.0, r)
+        # segments += self.interpolate_segment((L, r), (L, L - r))
+        # segments += self.arc(L - r, L - r, 0.0, math.pi / 2, r)
+        # segments += self.interpolate_segment((L - r, L), (r, L))
+        # segments += self.arc(r, L - r, math.pi / 2, math.pi, r)
+        # segments += self.interpolate_segment((0, L - r), (0, r))
+        # segments += self.arc(r, r, math.pi, 3 * math.pi / 2, r)
 
         path_msg = Path()
         path_msg.header.frame_id = 'odom'
@@ -184,4 +193,22 @@ def main(args=None):
     rclpy.shutdown()
 
 if __name__ == '__main__':
-    main()
+    # main()
+    L = 2.0
+    r = 0.8
+    node = SquarePlanner()
+    segments = []
+    segments += node.interpolate_segment((0, 0), (L - r, 0))
+    segments += node.arc(L - r, r, -math.pi / 2, 0.0, r)
+    segments += node.interpolate_segment((L, r), (L, L - 0.5*r))
+
+    # Plot the segments
+    x_vals = [x for x, y in segments]
+    y_vals = [y for x, y in segments]
+    plt.plot(x_vals, y_vals)
+    plt.title("Square Path Segments")
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+    plt.axis('equal')
+    plt.grid()
+    plt.show()

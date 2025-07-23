@@ -119,7 +119,7 @@ class CarlaEnv(gym.Env):
 
         # ZMQ REQ socket for reset requests
         self.reset_socket = self.context.socket(zmq.REQ)
-        self.reset_addr = "tcp://localhost:5002"  # Ensure this matches the reset_port in model_bridge.py
+        self.reset_addr = "tcp://localhost:5002"
         self.reset_socket.connect(self.reset_addr)
 
         if not last_positions_training:

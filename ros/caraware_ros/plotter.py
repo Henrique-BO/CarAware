@@ -12,7 +12,7 @@ from std_srvs.srv import Trigger
 class Plotter(Node):
     def __init__(self):
         super().__init__('plotter')
-        self.declare_parameter('frames', ['base_link'])
+        self.declare_parameter('frames', ['base_link', 'model_frame'])
         self.declare_parameter('world_frame', 'map')
         self.declare_parameter('obs_port', 5000)
 
@@ -48,7 +48,7 @@ class Plotter(Node):
         self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all topics
         print(f"Listening for observations on {obs_addr}")
 
-        self.observation = None
+        self.observation = [np.nan] * 11
         self.obs_thread = threading.Thread(target=self.observation_listener, daemon=True)
         self.obs_thread.start()
 
@@ -63,7 +63,7 @@ class Plotter(Node):
             self.sub_socket.close()
 
     def update_trajectories(self):
-        if not self.frames or not self.observation:
+        if not self.frames:
             return
 
         t = rclpy.time.Time()

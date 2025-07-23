@@ -6,10 +6,12 @@ import cv2
 import numpy as np
 import math
 import yaml
+import zmq
 
 import simulation.simulation as simulation
 import rl.train as train_RL
 import rl.play as play_RL
+from rl.CarlaEnv.carla_env import CarlaEnv
 
 from threading import Thread
 
@@ -98,6 +100,7 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
     NUM_EPISODES = episodes_config["num_episodes"]
     RESET_INTERVAL = episodes_config["reset_interval"]
     KALMAN_FILTER = episodes_config["kalman_filter"]
+    EPISODE_TIME = episodes_config["episode_time"]
 
     EGO_VEHICLE_NUM = vehicles_config["ego_vehicle_num"]
     NPC_VEHICLE_NUM = vehicles_config["npc_vehicle_num"]
@@ -170,6 +173,12 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
     num_restarts = 0  # contabiliza número de vezes que reiniciou
     sim_start_time = time.time()
 
+    if TRAIN_MODE == "Simulation":
+        context = zmq.Context()
+        reset_socket = context.socket(zmq.REQ)
+        reset_addr = "tcp://localhost:5002"
+        reset_socket.connect(reset_addr)
+
     First_episode = True  # Faz o spawn no primeiro episódio simulado
     while not sim.simulation_status == "Complete":
         logging.info(f"Starting episode {sim.episodio_atual}...")
@@ -186,6 +195,9 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
             num_episodes = math.inf
         else:
             num_episodes = str(NUM_EPISODES)
+
+        if EPISODE_TIME <= 0:
+            EPISODE_TIME = math.inf
 
         # INICIALIZA O EPISÓDIO "EPISODE_NUM"
         # registra os eventos em formato de log
@@ -224,6 +236,17 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
         ep_start_time = time.time()
         logging.info("Entering game loop...")
 
+        if TRAIN_MODE == "Simulation":
+            sim.simulation_status = "Simulation"
+            time.sleep(1)
+            try:
+                reset_socket.send_json({"command": "reset"})
+                response = reset_socket.recv_json()
+                if response.get("status") != "success":
+                    raise RuntimeError("Failed to reset EKF: Received negative response from reset service.")
+            except Exception as e:
+                raise RuntimeError(f"Failed to reset EKF: {e}")
+
         # Espera treinamento começar
         while not (sim.simulation_status == "Training" or sim.simulation_status == "Play" or \
                 sim.simulation_status == "Simulation"):
@@ -233,6 +256,12 @@ def main(TRAIN_MODE, SIM_PARAMS, SENS_PARAMS, TRAIN_PARAMS):
         # while time.time() <= ep_start_time + EPISODE_TIME:
         while sim.simulation_status == "Training" or sim.simulation_status == "Play" or \
                 sim.simulation_status == "Simulation":
+
+            # verifica se o tempo do episódio acabou
+            if (time.time() - ep_start_time) >= EPISODE_TIME and TRAIN_MODE == "Simulation":
+                logging.info("Episode time limit reached. Ending episode...")
+                sim.episodio_atual += 1
+                break
 
             # Lógica para finalizar com ESC no modo simulação
             if sim.simulation_status == "Simulation" and top_view.input_control.quit :
